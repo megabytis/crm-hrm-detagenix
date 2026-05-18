@@ -1,10 +1,20 @@
-const Customer =  require("../models/Customer");
+const Customer = require("../models/Customer");
 /**
  * CREATE CUSTOMER
  */
 const createCustomer = async (req, res) => {
   try {
     const { name, email, phone, company, status, assignedTo } = req.body;
+
+    // Duplicacy checking
+    if (email) {
+      const existing = await Customer.findOne({ email });
+      if (existing) {
+        return res.status(400).json({
+          message: "Customer with this email already exists",
+        });
+      }
+    }
 
     const customer = await Customer.create({
       name,
@@ -88,11 +98,10 @@ const getSingleCustomer = async (req, res) => {
  */
 const updateCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const customer = await Customer.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!customer) {
       return res.status(404).json({
