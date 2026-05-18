@@ -77,17 +77,20 @@ exports.createUser = async (req, res) => {
 
     const creatorRole = req.user.role;
 
-    // ADMIN can create any role
-    if (creatorRole === "ADMIN") {
-      // No additional restrictions for ADMIN
-    } 
-    // HR → Can create HR, Manager, Employee or BDE
-    else if (
+    // ADMIN → Only HR
+    if (creatorRole === "ADMIN" && role !== "HR") {
+      return res.status(403).json({
+        message: "Admin can only create HR",
+      });
+    }
+
+    // HR → Manager / Employee / BDE
+    if (
       creatorRole === "HR" &&
       !["HR", "MANAGER", "EMPLOYEE", "BDE"].includes(role)
     ) {
       return res.status(403).json({
-        message: "HR can only create HR, Manager, Employee or BDE",
+        message: "HR can only create Manager, Employee or BDE",
       });
     }
 
@@ -106,7 +109,7 @@ exports.createUser = async (req, res) => {
       tenantId: req.user.tenantId,
       name,
       email,
-      password: hashedPassword,
+      password: hashedPassword, 
       role,
       phone,
       department,
@@ -186,11 +189,11 @@ exports.deleteUser = async (req, res) => {
 
     // HR can only delete their tenant users
     if (
-      req.user.role === "HR" &&
-      user.tenantId.toString() !== req.user.tenantId.toString()
+      req.user.role !== "HR" &&
+      user.tenantId.toString() !== req.user.tenantId
     ) {
       return res.status(403).json({
-        message: "Access denied. Cannot delete user from another tenant",
+        message: "Access denied",
       });
     }
 
@@ -230,11 +233,11 @@ exports.updateUser = async (req, res) => {
 
     // HR can only update users of same tenant
     if (
-      req.user.role === "HR" &&
-      user.tenantId.toString() !== req.user.tenantId.toString()
+      req.user.role !== "HR" &&
+      user.tenantId.toString() !== req.user.tenantId
     ) {
       return res.status(403).json({
-        message: "Access denied. Cannot update user from another tenant",
+        message: "Access denied",
       });
     }
 

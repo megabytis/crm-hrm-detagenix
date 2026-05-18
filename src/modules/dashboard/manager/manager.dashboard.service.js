@@ -17,8 +17,8 @@ const getManagerDashboard = async (managerId, companyId, query) => {
     // TEAM
     // =========================
     const team = await User.find({
-      manager: managerId,
-      company: companyId,
+      reportingTo: managerId,
+      tenantId: companyId,
       isActive: true
     }).select("_id");
 

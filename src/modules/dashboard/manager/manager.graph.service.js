@@ -14,8 +14,8 @@ const getGraphData = async (user, query) => {
     : new Date();
 
   const teamMembers = await User.find({
-    manager: user.id,
-    company: user.company
+    reportingTo: user.id,
+    tenantId: user.tenantId
   }).select("_id");
 
   const teamIds = teamMembers.map(member => member._id);
