@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import logging
 from typing import Dict, List, Optional
 import json
-from prediction_enhancer import PredictionEnhancer
+from services.prediction_enhancer import PredictionEnhancer
 
 # Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
