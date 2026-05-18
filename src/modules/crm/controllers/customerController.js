@@ -6,6 +6,16 @@ const createCustomer = async (req, res) => {
   try {
     const { name, email, phone, company, status, assignedTo } = req.body;
 
+    // Duplicacy checking
+    if (email) {
+      const existing = await Customer.findOne({ email });
+      if (existing) {
+        return res.status(400).json({
+          message: "Customer with this email already exists",
+        });
+      }
+    }
+
     const customer = await Customer.create({
       tenantId: req.user.tenantId,
       name,
