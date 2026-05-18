@@ -1,10 +1,10 @@
-const axios = require('axios');
-const dotenv = require('dotenv');
+const axios = require("axios");
+const dotenv = require("dotenv");
 
 dotenv.config();
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-const AI_SERVICE_ENABLED = process.env.AI_SERVICE_ENABLED === 'true';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+const AI_SERVICE_ENABLED = process.env.AI_SERVICE_ENABLED === "true";
 
 class AiService {
   constructor() {
@@ -12,29 +12,29 @@ class AiService {
       baseURL: AI_SERVICE_URL,
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
   }
 
   async checkHealth() {
-    if (!AI_SERVICE_ENABLED) return { status: 'disabled' };
+    if (!AI_SERVICE_ENABLED) return { status: "disabled" };
     try {
-      const response = await this.client.get('/');
+      const response = await this.client.get("/");
       return response.data;
     } catch (error) {
-      console.error('AI Service Health Check Failed:', error.message);
-      return { status: 'down', error: error.message };
+      console.error("AI Service Health Check Failed:", error.message);
+      return { status: "down", error: error.message };
     }
   }
 
   async predictLeadTemperature(leadData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/predict', leadData);
+      const response = await this.client.post("/predict", leadData);
       return response.data;
     } catch (error) {
-      console.error('AI Lead Prediction Failed:', error.message);
+      console.error("AI Lead Prediction Failed:", error.message);
       return null;
     }
   }
@@ -42,10 +42,13 @@ class AiService {
   async predictConversionProbability(scoringData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/lead-scoring/conversion/predict', scoringData);
+      const response = await this.client.post(
+        "/lead-scoring/conversion/predict",
+        scoringData,
+      );
       return response.data;
     } catch (error) {
-      console.error('AI Conversion Prediction Failed:', error.message);
+      console.error("AI Conversion Prediction Failed:", error.message);
       return null;
     }
   }
@@ -53,13 +56,13 @@ class AiService {
   async generateInsights(recordId, context = {}) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/ai-insights/generate', {
+      const response = await this.client.post("/ai-insights/generate", {
         record_id: recordId,
-        ...context
+        ...context,
       });
       return response.data;
     } catch (error) {
-      console.error('AI Insights Generation Failed:', error.message);
+      console.error("AI Insights Generation Failed:", error.message);
       return null;
     }
   }
@@ -67,10 +70,13 @@ class AiService {
   async generateEmail(emailContext) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/email/generate-followup', emailContext);
+      const response = await this.client.post(
+        "/email/generate-followup",
+        emailContext,
+      );
       return response.data;
     } catch (error) {
-      console.error('AI Email Generation Failed:', error.message);
+      console.error("AI Email Generation Failed:", error.message);
       return null;
     }
   }
@@ -78,10 +84,10 @@ class AiService {
   async chatbotChat(chatContext) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/chatbot/chat', chatContext);
+      const response = await this.client.post("/chatbot/chat", chatContext);
       return response.data;
     } catch (error) {
-      console.error('AI Chatbot Chat Failed:', error.message);
+      console.error("AI Chatbot Chat Failed:", error.message);
       return null;
     }
   }
@@ -89,12 +95,12 @@ class AiService {
   async getSalesForecast(months = 3) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.get('/sales-forecast', {
-        params: { months }
+      const response = await this.client.get("/sales-forecast", {
+        params: { months },
       });
       return response.data;
     } catch (error) {
-      console.error('AI Sales Forecast Failed:', error.message);
+      console.error("AI Sales Forecast Failed:", error.message);
       return null;
     }
   }
@@ -102,10 +108,13 @@ class AiService {
   async generateLeadsFromQuery(queryData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/lead-generation/search-query', queryData);
+      const response = await this.client.post(
+        "/lead-generation/search-query",
+        queryData,
+      );
       return response.data;
     } catch (error) {
-      console.error('AI Lead Gen Search Failed:', error.message);
+      console.error("AI Lead Gen Search Failed:", error.message);
       return null;
     }
   }
@@ -113,10 +122,13 @@ class AiService {
   async qualifySearchResults(qualifyData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/lead-generation/qualify-search-results', qualifyData);
+      const response = await this.client.post(
+        "/lead-generation/qualify-search-results",
+        qualifyData,
+      );
       return response.data;
     } catch (error) {
-      console.error('AI Lead Gen Qualify Failed:', error.message);
+      console.error("AI Lead Gen Qualify Failed:", error.message);
       return null;
     }
   }
@@ -124,20 +136,22 @@ class AiService {
   async getLeadGenerationDashboard(params) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.get('/lead-generation/dashboard', { params });
+      const response = await this.client.get("/lead-generation/dashboard", {
+        params,
+      });
       return response.data;
     } catch (error) {
-      console.error('AI Lead Gen Dashboard Failed:', error.message);
+      console.error("AI Lead Gen Dashboard Failed:", error.message);
       return null;
     }
   }
   async predictClv(clvData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/clv/predict', clvData);
+      const response = await this.client.post("/clv/predict", clvData);
       return response.data;
     } catch (error) {
-      console.error('AI CLV Prediction Failed:', error.message);
+      console.error("AI CLV Prediction Failed:", error.message);
       return null;
     }
   }
@@ -145,20 +159,26 @@ class AiService {
   async optimizeFollowup(followupData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/followup/optimize', followupData);
+      const response = await this.client.post(
+        "/followup/optimize",
+        followupData,
+      );
       return response.data;
     } catch (error) {
-      console.error('AI Followup Optimization Failed:', error.message);
+      console.error("AI Followup Optimization Failed:", error.message);
       return null;
     }
   }
   async analyzeConversation(conversationData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post('/conversation-intelligence/analyze', conversationData);
+      const response = await this.client.post(
+        "/conversation-intelligence/analyze",
+        conversationData,
+      );
       return response.data;
     } catch (error) {
-      console.error('AI Conversation Analysis Failed:', error.message);
+      console.error("AI Conversation Analysis Failed:", error.message);
       return null;
     }
   }
@@ -166,10 +186,12 @@ class AiService {
   async getLeadConversationIntelligence(leadId) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.get(`/conversation-intelligence/lead/${leadId}`);
+      const response = await this.client.get(
+        `/conversation-intelligence/lead/${leadId}`,
+      );
       return response.data;
     } catch (error) {
-      console.error('AI Fetch Lead Intelligence Failed:', error.message);
+      console.error("AI Fetch Lead Intelligence Failed:", error.message);
       return null;
     }
   }
@@ -177,12 +199,15 @@ class AiService {
   async getConversationIntelligenceOverview(limit = 200) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.get('/conversation-intelligence/overview', {
-        params: { limit }
-      });
+      const response = await this.client.get(
+        "/conversation-intelligence/overview",
+        {
+          params: { limit },
+        },
+      );
       return response.data;
     } catch (error) {
-      console.error('AI Fetch Intelligence Overview Failed:', error.message);
+      console.error("AI Fetch Intelligence Overview Failed:", error.message);
       return null;
     }
   }

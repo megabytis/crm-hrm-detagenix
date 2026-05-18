@@ -8,7 +8,7 @@ exports.getManagerDashboard = async (req, res) => {
   try {
     const data = await managerService.getManagerDashboard(
       req.user.id,
-      req.user.company,
+      req.user.tenantId,
       req.query
     );
 
