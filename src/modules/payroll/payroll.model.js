@@ -2,15 +2,9 @@
 const mongoose = require("mongoose");
 
 const payrollSchema = new mongoose.Schema({
-  tenantId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Tenant",
-    required: true
-  },
   employee: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
+    ref: "User"
   },
   baseSalary: Number,
   deductions: Number,

@@ -1,37 +1,40 @@
 const Onboarding = require("./onboarding.model");
 
 exports.startOnboarding = async (req, res) => {
-  try {
-    const { employeeId } = req.body;
+try {
 
-    const onboarding = await Onboarding.create({
-      tenantId: req.user.tenantId,
-      employee: employeeId,
-      status: "In Progress",
-    });
+const { employeeId } = req.body;
 
-    res.status(201).json({
-      success: true,
-      message: "Onboarding started",
-      data: onboarding,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+const onboarding = await Onboarding.create({
+employee: employeeId,
+status: "In Progress"
+});
+
+res.status(201).json({
+success: true,
+message: "Onboarding started",
+data: onboarding
+});
+
+} catch (error) {
+res.status(500).json({ message: error.message });
+}
 };
 
-exports.getOnboarding = async (req, res) => {
-  try {
-    const data = await Onboarding.find({
-      tenantId: req.user.tenantId,
-    }).populate("employee", "name email department");
 
-    res.json({
-      success: true,
-      count: data.length,
-      data,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+exports.getOnboarding = async (req, res) => {
+try {
+
+const data = await Onboarding.find()
+.populate("employee", "name email department");
+
+res.json({
+success: true,
+count: data.length,
+data
+});
+
+} catch (error) {
+res.status(500).json({ message: error.message });
+}
 };

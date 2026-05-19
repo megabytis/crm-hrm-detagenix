@@ -3,45 +3,48 @@ const Request = require("./request.model");
 // Raise Request
 exports.raiseRequest = async (req, res) => {
   try {
+
     const { title, description, type } = req.body;
 
     const request = await Request.create({
-      tenantId: req.user.tenantId,
       employee: req.user.id,
       title,
       description,
-      type,
+      type
     });
 
     res.status(201).json({
       success: true,
       message: "Request submitted successfully",
-      data: request,
+      data: request
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message
     });
   }
 };
 
+
 // Get All Requests (HR/Admin)
 exports.getAllRequests = async (req, res) => {
   try {
-    const requests = await Request.find({
-      tenantId: req.user.tenantId,
-    }).populate("employee", "name email role");
+
+    const requests = await Request.find()
+      .populate("employee", "name email role");
 
     res.json({
       success: true,
       count: requests.length,
-      data: requests,
+      data: requests
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message
     });
   }
 };

@@ -7,14 +7,15 @@ exports.applyLeave = async (req, res) => {
     const { leaveType, fromDate, toDate, reason } = req.body;
 
     const leave = await Leave.create({
-      employee: req.user._id,
+       employee: req.user._id,
       leaveType,
       fromDate,
       toDate,
-      reason,
+      reason
     });
 
     res.status(201).json({ success: true, leave });
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -30,7 +31,7 @@ exports.getMyLeaves = async (req, res) => {
     console.log("Logged in user:", req.user._id);
 
     const leaves = await Leave.find({
-      employee: req.user._id,
+      employee: req.user._id
     }).populate("employee", "name email");
 
     console.log("My Leaves:", leaves);
@@ -41,6 +42,7 @@ exports.getMyLeaves = async (req, res) => {
   }
 };
 
+
 // Get All Leaves (Admin/HR)
 // exports.getAllLeaves = async (req, res) => {
 //   const leaves = await Leave.find().populate("employee", "name email");
@@ -50,19 +52,25 @@ exports.getAllLeaves = async (req, res) => {
   try {
     const role = req.user.role;
 
+    
     if (role === "EMPLOYEE") {
       return res.status(403).json({
-        message: "Access denied",
+        message: "Access denied"
       });
     }
 
-    const leaves = await Leave.find().populate("employee", "name email");
+   
+    const leaves = await Leave.find()
+      .populate("employee", "name email");
 
     res.json(leaves);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // Approve / Reject Leave
 // exports.updateLeaveStatus = async (req, res) => {
@@ -84,7 +92,7 @@ exports.updateLeaveStatus = async (req, res) => {
     // ❌ Employee block
     if (!["ADMIN", "HR", "MANAGER"].includes(role)) {
       return res.status(403).json({
-        message: "Not allowed",
+        message: "Not allowed"
       });
     }
 
@@ -98,6 +106,7 @@ exports.updateLeaveStatus = async (req, res) => {
     await leave.save();
 
     res.json({ success: true, leave });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -110,7 +119,7 @@ exports.getLeaveStats = async (req, res) => {
     // Approved leaves only
     const approvedLeaves = await Leave.find({
       employee: employeeId,
-      status: "Approved",
+      status: "Approved"
     });
 
     // Count total leave days
@@ -120,7 +129,8 @@ exports.getLeaveStats = async (req, res) => {
       const from = new Date(leave.fromDate);
       const to = new Date(leave.toDate);
 
-      const days = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
+      const days =
+        Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
 
       usedLeaves += days;
     });
@@ -135,13 +145,14 @@ exports.getLeaveStats = async (req, res) => {
       totalLeaves,
       usedLeaves,
       remainingLeaves,
-      approvedLeaves: approvedLeaves.length,
+      approvedLeaves: approvedLeaves.length
     });
+
   } catch (error) {
     console.error("Leave Stats Error:", error);
 
     res.status(500).json({
-      message: "Failed to fetch leave stats",
+      message: "Failed to fetch leave stats"
     });
   }
 };

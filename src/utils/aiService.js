@@ -211,6 +211,33 @@ class AiService {
       return null;
     }
   }
+  async screenResume(resumeData) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post(
+        "/resume-screening/screen",
+        resumeData,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("AI Resume Screening Failed:", error.message);
+      return null;
+    }
+  }
+
+  async predictEmployeeAttrition(employeeData) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post(
+        "/employee-attrition/predict",
+        employeeData,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("AI Employee Attrition Prediction Failed:", error.message);
+      return null;
+    }
+  }
 }
 
 module.exports = new AiService();
