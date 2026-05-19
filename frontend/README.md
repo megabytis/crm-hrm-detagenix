@@ -1,75 +1,16 @@
-# CRM + HRM Frontend Application
+# React + Vite
 
-Welcome to the frontend application for the CRM & HRM system! This is a modern, fast, and responsive user interface built using Vite and React.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 🚀 Tech Stack
+Currently, two official plugins are available:
 
-- **React (v19)**: The core UI library.
-- **Vite**: Ultra-fast frontend build tool and development server.
-- **React Router DOM**: Client-side routing for navigating between dashboards and modules.
-- **Chart.js & Recharts**: Libraries used for rendering beautiful data visualizations and analytics on the dashboards.
-- **React Icons**: For standardizing UI icons.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## ⚙️ How to Start the Frontend
+## React Compiler
 
-Follow these simple steps to run the frontend application locally:
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-1. **Navigate to the frontend directory** (if you aren't already there):
-   ```bash
-   cd frontend
-   ```
+## Expanding the ESLint configuration
 
-2. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Start the Development Server**:
-   ```bash
-   npm run dev
-   ```
-
-4. **View the App**:
-   Open your browser and navigate to the URL provided in the terminal (usually `http://localhost:5173`).
-
-## 📁 Project Structure
-
-```text
-frontend/
-├── index.html           # Main HTML template
-├── vite.config.js       # Vite configuration file
-├── package.json         # Dependencies and scripts
-├── public/              # Static assets (images, favicons)
-└── src/                 # Application Source Code
-    ├── components/      # Reusable UI components (buttons, modals, charts)
-    ├── pages/           # Page-level components (Dashboards, Login, etc.)
-    ├── context/         # React Context for state management (Auth, Theme)
-    ├── hooks/           # Custom React hooks
-    ├── services/        # API call wrappers (Axios configurations)
-    └── App.jsx          # Main application component & routing
-```
-
-## 🔗 Connecting to the Backend
-
-By default, the frontend is expected to communicate with the backend API running on `http://localhost:5000/api`.
-Ensure that:
-1. The backend server is running simultaneously in another terminal.
-2. If your backend is running on a different port, update the base URL in your frontend API service configurations or `.env` file (if applicable).
-
-## 🧹 Linting & Code Quality
-
-To keep the codebase clean and adhere to best practices, you can run the linter:
-```bash
-npm run lint
-```
-
-## 🏗️ Building for Production
-
-When you are ready to deploy, create an optimized production build:
-```bash
-npm run build
-```
-You can then preview the production build locally using:
-```bash
-npm run preview
-```
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
