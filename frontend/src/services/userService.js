@@ -51,4 +51,13 @@ export const userService = {
       throw error;
     }
   },
+ resetPassword: async (id, data) => {
+  try {
+    const response = await api.put(`/hrm/profile/reset-password/${id}`, data);
+    return response; 
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return { success: false };
+  }
+}
 };

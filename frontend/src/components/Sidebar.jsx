@@ -236,19 +236,19 @@ const Sidebar = () => {
           <>
             {/*  COMMON (sab ke liye) */}
             {role !== "ADMIN" && (
-  <li
-    onClick={() => menuNavigate("/hrms/attendance")}
-    style={{ paddingLeft: "45px", cursor: "pointer" }}
-  >
-    Attendance Management
-  </li>
-)}
+              <li
+                onClick={() => menuNavigate("/hrms/attendance")}
+                style={{ paddingLeft: "45px", cursor: "pointer" }}
+              >
+                Attendance Management
+              </li>
+            )}
 
             <li
               onClick={() => menuNavigate("/hrms/employee-profile")}
               style={{ paddingLeft: "45px", cursor: "pointer" }}
             >
-              Employee Profile
+              My Profile
             </li>
 
             <li
@@ -281,17 +281,22 @@ const Sidebar = () => {
                   Payroll Management
                 </li>
 
-        <li onClick={() => menuNavigate("/hrms/performance-appraisal")} style={{ paddingLeft: "45px", cursor: "pointer" }}>
-          Performance Appraisal
-        </li>
-         <li onClick={() => menuNavigate("/hrms/attendance-review")} style={{ paddingLeft: "45px", cursor: "pointer" }}>
-         Attendance Review
-        </li>
-        
-      </>
-    )}
-  </>
-)}
+                <li
+                  onClick={() => menuNavigate("/hrms/performance-appraisal")}
+                  style={{ paddingLeft: "45px", cursor: "pointer" }}
+                >
+                  Performance Appraisal
+                </li>
+                <li
+                  onClick={() => menuNavigate("/hrms/attendance-review")}
+                  style={{ paddingLeft: "45px", cursor: "pointer" }}
+                >
+                  Attendance Review
+                </li>
+              </>
+            )}
+          </>
+        )}
         {/* AI CENTER */}
         <li>
           <RiRobot2Fill size={16} color="#ffffff" /> AI Center

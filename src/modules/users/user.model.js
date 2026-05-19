@@ -57,7 +57,16 @@ const userSchema = new mongoose.Schema(
 
     createdByRole: String,
 
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    totalLeaves: {
+  type: Number,
+  default: 4
+},
+
+usedLeaves: {
+  type: Number,
+  default: 0
+},
   },
   { timestamps: true }
 );

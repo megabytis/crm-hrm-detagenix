@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "../DashboardComponents/DashboardLayout";
 import { userService } from "../../services/userService";
-import profileImg from "../../assets/profileimg.png"
+import profileImg from "../../assets/profileimg.png";
 const EmployeeProfile = () => {
   const user = JSON.parse(localStorage.getItem("user"));
   const id = user?.id;
@@ -16,6 +16,12 @@ const EmployeeProfile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({});
 
+  const [showResetModal, setShowResetModal] = useState(false);
+
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
   // Fetch employee profile on component mount
   useEffect(() => {
     fetchEmployeeProfile();
@@ -41,40 +47,40 @@ const EmployeeProfile = () => {
     }
   };
   const handleChange = (e) => {
-  const { name, value } = e.target;
-  setFormData((prev) => ({
-    ...prev,
-    [name]: value,
-  }));
-};
-const handleEditSubmit = async () => {
-  try {
-    setLoading(true);
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+  const handleEditSubmit = async () => {
+    try {
+      setLoading(true);
 
-    console.log("Sending Data:", formData);
+      console.log("Sending Data:", formData);
 
-    const res = await userService.updateProfile(id, formData);
+      const res = await userService.updateProfile(id, formData);
 
-    console.log("Response:", res);
+      console.log("Response:", res);
 
-    if (res.success) {
-      setProfileData((prev) => ({
-        ...prev,
-        basicInfo: res.profile || res.data,
-      }));
+      if (res.success) {
+        setProfileData((prev) => ({
+          ...prev,
+          basicInfo: res.profile || res.data,
+        }));
 
-      setShowEditModal(false);
-      alert("Profile updated successfully!");
-    } else {
-      alert(res.message || "Failed to update profile");
+        setShowEditModal(false);
+        alert("Profile updated successfully!");
+      } else {
+        alert(res.message || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Update profile error:", error);
+      alert("Update failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Update profile error:", error);
-    alert("Update failed. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleUpdateProfile = async (updatedData) => {
     try {
@@ -82,12 +88,12 @@ const handleEditSubmit = async () => {
       const response = await userService.updateProfile(id, updatedData);
 
       if (res.success) {
-  setProfileData({
-    ...profileData,
-    basicInfo: res.profile || res.data
-  });
-  setShowEditModal(false);
-} else {
+        setProfileData({
+          ...profileData,
+          basicInfo: res.profile || res.data,
+        });
+        setShowEditModal(false);
+      } else {
         alert(response.message || "Failed to update profile");
       }
     } catch (error) {
@@ -119,7 +125,36 @@ const handleEditSubmit = async () => {
       }
     }
   };
+  const handleResetPassword = async () => {
+    const { newPassword, confirmPassword } = passwordData;
 
+    if (!newPassword || !confirmPassword) {
+      return alert("Please fill all fields");
+    }
+
+    if (newPassword !== confirmPassword) {
+      return alert("Passwords do not match");
+    }
+
+    try {
+      console.log("Sending password:", newPassword);
+
+      const response = await userService.resetPassword(id, { newPassword });
+
+      console.log("API RESPONSE:", response); // 👈 IMPORTANT
+
+      if (response && response.success) {
+        alert("Password updated successfully!");
+        setShowResetModal(false);
+        setPasswordData({ newPassword: "", confirmPassword: "" });
+      } else {
+        alert(response?.message || "Failed to reset password");
+      }
+    } catch (error) {
+      console.error("Reset password error:", error);
+      alert("Something went wrong");
+    }
+  };
   // Loading state
   if (loading) {
     return (
@@ -152,7 +187,6 @@ const handleEditSubmit = async () => {
   if (error) {
     return (
       <DashboardLayout>
-      
         <div
           style={{ padding: "20px", background: "#f4f6f9", minHeight: "100vh" }}
         >
@@ -200,21 +234,17 @@ const handleEditSubmit = async () => {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-              {/* <img
-                src={`https://i.pravatar.cc/100?u=${basicInfo?._id}`}
-                alt="profile"
-                style={{ width: "90px", height: "90px", borderRadius: "50%" }}
-              /> */}
+              
               <img
-  src={basicInfo?.profileImage || profileImg}
-  alt="profile"
-  style={{
-    width: "90px",
-    height: "90px",
-    borderRadius: "50%",
-    objectFit: "cover"
-  }}
-/>
+                src={basicInfo?.profileImage || profileImg}
+                alt="profile"
+                style={{
+                  width: "90px",
+                  height: "90px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
               <div>
                 <h3 style={{ margin: 0 }}>{basicInfo?.name || "N/A"}</h3>
                 <p style={{ margin: "4px 0", color: "#777" }}>
@@ -229,9 +259,9 @@ const handleEditSubmit = async () => {
 
             <button
               onClick={() => {
-  setFormData({ ...basicInfo }); // important change
-  setShowEditModal(true);
-}}
+                setFormData({ ...basicInfo }); // important change
+                setShowEditModal(true);
+              }}
               style={primaryBtn}
             >
               {editing ? "Cancel" : "Edit Profile"}
@@ -273,10 +303,10 @@ const handleEditSubmit = async () => {
               label="Department"
               value={basicInfo?.department || "N/A"}
             />
-             <InfoRow
-  label="Project Manager"
-  value={basicInfo?.projectManager || "N/A"}
-/>
+            <InfoRow
+              label="Project Manager"
+              value={basicInfo?.projectManager || "N/A"}
+            />
             <InfoRow
               label="Status"
               value={basicInfo?.isActive ? "Active" : "Inactive"}
@@ -342,100 +372,138 @@ const handleEditSubmit = async () => {
 
         {/* Bottom Buttons */}
         <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
-          <button
-            onClick={() => handleUpdateProfile(basicInfo)}
-            disabled={!editing}
-            style={{
-              ...primaryBtn,
-              opacity: editing ? 1 : 0.5,
-              cursor: editing ? "pointer" : "not-allowed",
-            }}
-          >
-            Save Changes
+          <button onClick={() => setShowResetModal(true)} style={secondaryBtn}>
+            Reset Password
           </button>
-          <button onClick={() => setEditing(false)} style={secondaryBtn}>
-            Cancel
-          </button>
-          <button style={secondaryBtn}>Reset Password</button>
           <button onClick={handleDeleteEmployee} style={dangerBtn}>
             Delete Employee
           </button>
         </div>
       </div>
       {showEditModal && (
-  <div
-    style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      background: "rgba(0,0,0,0.4)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 9999,
-    }}
-  >
-    <div
-      style={{
-        background: "#fff",
-        padding: "25px",
-        borderRadius: "12px",
-        width: "500px",
-        maxWidth: "90%",
-      }}
-    >
-      <h3 style={{ marginBottom: "15px" }}>Edit Profile</h3>
-
-      <input
-        name="name"
-        value={formData.name || ""}
-        onChange={handleChange}
-        placeholder="Full Name"
-        style={inputStyle}
-      />
-
-      <input
-        name="email"
-        value={formData.email || ""}
-        onChange={handleChange}
-        placeholder="Email"
-        style={inputStyle}
-      />
-
-      <input
-        name="phone"
-        value={formData.phone || ""}
-        onChange={handleChange}
-        placeholder="Phone"
-        style={inputStyle}
-      />
-
-      <input
-        name="department"
-        value={formData.department || ""}
-        onChange={handleChange}
-        placeholder="Department"
-        style={inputStyle}
-      />
-
-      {/* Buttons */}
-      <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
-        <button onClick={handleEditSubmit} style={primaryBtn} disabled={loading}>
-          {loading ? "Saving..." : "Save"}
-        </button>
-
-        <button
-          onClick={() => setShowEditModal(false)}
-          style={secondaryBtn}
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+          }}
         >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div
+            style={{
+              background: "#fff",
+              padding: "25px",
+              borderRadius: "12px",
+              width: "500px",
+              maxWidth: "90%",
+            }}
+          >
+            <h3 style={{ marginBottom: "15px" }}>Edit Profile</h3>
+
+            <input
+              name="name"
+              value={formData.name || ""}
+              onChange={handleChange}
+              placeholder="Full Name"
+              style={inputStyle}
+            />
+
+            <input
+              name="email"
+              value={formData.email || ""}
+              onChange={handleChange}
+              placeholder="Email"
+              style={inputStyle}
+            />
+
+            <input
+              name="phone"
+              value={formData.phone || ""}
+              onChange={handleChange}
+              placeholder="Phone"
+              style={inputStyle}
+            />
+
+            <input
+              name="department"
+              value={formData.department || ""}
+              onChange={handleChange}
+              placeholder="Department"
+              style={inputStyle}
+            />
+
+            {/* Buttons */}
+            <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
+              <button
+                onClick={handleEditSubmit}
+                style={primaryBtn}
+                disabled={loading}
+              >
+                {loading ? "Saving..." : "Save"}
+              </button>
+
+              <button
+                onClick={() => setShowEditModal(false)}
+                style={secondaryBtn}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showResetModal && (
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <h3>Reset Password</h3>
+
+            <input
+              type="password"
+              placeholder="New Password"
+              value={passwordData.newPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  newPassword: e.target.value,
+                })
+              }
+              style={inputStyle}
+            />
+
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              value={passwordData.confirmPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  confirmPassword: e.target.value,
+                })
+              }
+              style={inputStyle}
+            />
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+              <button onClick={handleResetPassword} style={primaryBtn}>
+                Reset
+              </button>
+
+              <button
+                onClick={() => setShowResetModal(false)}
+                style={secondaryBtn}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
@@ -521,11 +589,15 @@ const primaryBtn = {
 };
 
 const secondaryBtn = {
-  padding: "8px 16px",
-  background: "#f1f1f1",
-  border: "1px solid #ddd",
-  borderRadius: "6px",
+  padding: "10px 18px",
+  background: "linear-gradient(135deg, #38bdf8, #0ea5e9)",
+  border: "none",
+  color: "#fff",
+  borderRadius: "8px",
   cursor: "pointer",
+  fontWeight: "500",
+  transition: "all 0.3s ease",
+  boxShadow: "0 4px 10px rgba(14, 165, 233, 0.3)",
 };
 
 const dangerBtn = {
@@ -536,13 +608,31 @@ const dangerBtn = {
   borderRadius: "6px",
   cursor: "pointer",
 };
-const inputStyle = { 
+const inputStyle = {
   width: "100%",
   padding: "8px",
   marginBottom: "10px",
   borderRadius: "6px",
   border: "1px solid #ccc",
 };
+const overlayStyle = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  background: "rgba(0,0,0,0.4)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 9999,
+};
 
+const modalStyle = {
+  background: "#fff",
+  padding: "25px",
+  borderRadius: "12px",
+  width: "400px",
+  maxWidth: "90%",
+};
 export default EmployeeProfile;
-

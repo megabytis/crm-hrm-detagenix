@@ -36,7 +36,16 @@ const apiRequest = async (endpoint, options = {}) => {
       return;
     }
 
-    const data = await response.json();
+    // const data = await response.json();
+    const text = await response.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.error("Non-JSON response:", text);
+      throw new Error("Server is not returning JSON. Backend issue.");
+    }
 
     if (!response.ok) {
       throw new Error(data.message || "Something went wrong");

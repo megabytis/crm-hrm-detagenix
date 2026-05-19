@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../DashboardComponents/DashboardLayout";
 import { attendanceService } from "../../services/attendanceService";
+import { leaveService } from "../../services/leaveService";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
@@ -22,13 +23,37 @@ const AttendanceManagement = () => {
   const [currentPageTop, setCurrentPageTop] = useState(1);
   const rowsPerPageTop = 3;
 
+  const [leaveStats, setLeaveStats] = useState({
+    totalLeaves: 4,
+    usedLeaves: 0,
+    remainingLeaves: 4,
+  });
+
   // Fetch all employees attendance on component mount
   useEffect(() => {
     if (["EMPLOYEE", "MANAGER", "HR"].includes(role)) {
       fetchMyAttendance();
     }
   }, [role]);
+  useEffect(() => {
+    fetchLeaveStats();
+  }, []);
 
+  useEffect(() => {
+  if (["ADMIN", "SUPERADMIN"].includes(role)) {
+    fetchAllAttendance();
+  }
+}, [role]);
+
+  const fetchLeaveStats = async () => {
+    try {
+     const response = await leaveService.getLeaveStats(user.id);
+
+      setLeaveStats(response);
+    } catch (error) {
+      console.error(error);
+    }
+  };
   const fetchAllAttendance = async () => {
     try {
       setLoading(true);
@@ -73,18 +98,37 @@ const AttendanceManagement = () => {
   // extra leaves (negative case)
   const extraLeaves =
     leavesTaken > TOTAL_LEAVES ? leavesTaken - TOTAL_LEAVES : 0;
+  // const fetchMyAttendance = async () => {
+  //   try {
+  //     const res = await attendanceService.getMyAttendance();
+
+  //     console.log("MY DATA 👉", res);
+
+  //     setMyLogs(res || []); // 👈 yahi fix hai
+  //     // setMyLogs(res?.data || []);
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // };
+  
   const fetchMyAttendance = async () => {
-    try {
-      const res = await attendanceService.getMyAttendance();
+  try {
+    setLoading(true);
+    setError(null);
 
-      console.log("MY DATA 👉", res);
+    const res = await attendanceService.getMyAttendance();
 
-      setMyLogs(res || []); // 👈 yahi fix hai
-      // setMyLogs(res?.data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    console.log("MY DATA 👉", res);
+
+    setMyLogs(res || []);
+  } catch (err) {
+    console.error(err);
+    setError("Failed to fetch attendance");
+  } finally {
+    setLoading(false);
+  }
+};
+
   const isLateCheckIn = (checkInTime) => {
     if (!checkInTime) return false;
 
@@ -140,27 +184,97 @@ const AttendanceManagement = () => {
     }
   };
 
-  // Calculate statistics from fetched data
-  const calculateStats = () => {
-    const present = attendanceData.filter(
-      (att) => att.status === "Present",
-    ).length;
-    const absent = attendanceData.filter(
-      (att) => att.status === "Absent",
-    ).length;
-    const late = attendanceData.filter((att) => att.status === "Late").length;
+  // Current week data
+const getWeeklyStats = () => {
+  const today = new Date();
 
-    return { present, absent, late };
+  const weeklyData = data.filter((att) => {
+    const attDate = new Date(att.checkIn || att.date);
+
+    // difference in days
+    const diffTime = today - attDate;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+    // sirf last 7 days ka data
+    return diffDays >= 0 && diffDays <= 7;
+  });
+
+  console.log("Weekly Data 👉", weeklyData);
+
+ const presentCount = weeklyData.filter(
+  (att) =>
+    att.status?.toLowerCase() === "present" ||
+    att.status?.toLowerCase() === "half day"
+).length;
+
+  const absentCount = weeklyData.filter(
+    (att) => att.status?.toLowerCase() === "absent"
+  ).length;
+
+  const total = presentCount + absentCount;
+
+  return {
+    presentPercentage:
+      total > 0 ? ((presentCount / total) * 100).toFixed(1) : 0,
+
+    absentPercentage:
+      total > 0 ? ((absentCount / total) * 100).toFixed(1) : 0,
   };
+};
 
-  const stats = calculateStats();
+const weeklyStats = getWeeklyStats();
+
+  // Calculate statistics from fetched data
+  // const calculateStats = () => {
+  //   const present = attendanceData.filter(
+  //     (att) => att.status === "Present",
+  //   ).length;
+  //   const absent = attendanceData.filter(
+  //     (att) => att.status === "Absent",
+  //   ).length;
+  //   const late = attendanceData.filter((att) => att.status === "Late").length;
+
+  //   return { present, absent, late };
+  // };
+
+  // const stats = calculateStats();
+ const calculateStats = () => {
+  const statsData = ["EMPLOYEE", "MANAGER", "HR"].includes(role)
+    ? myLogs
+    : attendanceData;
+
+  let present = 0;
+  let absent = 0;
+  let late = 0;
+
+  statsData.forEach((att) => {
+    const status = att.status?.toLowerCase();
+
+    if (status === "present") {
+      present += 1;
+    } 
+    else if (status === "absent") {
+      absent += 1;
+    } 
+    else if (status === "half day") {
+      present += 0.5;
+      absent += 0.5;
+    } 
+    else if (status === "late") {
+      late += 1;
+    }
+  });
+
+  return { present, absent, late };
+};
+const stats = calculateStats();
 
   // Pagination calculations
- const totalPages = Math.ceil(myLogs.length / rowsPerPage);
-const indexOfLastRow = currentPage * rowsPerPage;
-const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const totalPages = Math.ceil(myLogs.length / rowsPerPage);
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
 
-const currentRows = myLogs.slice(indexOfFirstRow, indexOfLastRow);
+  const currentRows = myLogs.slice(indexOfFirstRow, indexOfLastRow);
 
   const topData = ["EMPLOYEE", "MANAGER", "HR"].includes(role)
     ? myLogs.filter((log) => isToday(log.checkIn))
@@ -253,8 +367,8 @@ const currentRows = myLogs.slice(indexOfFirstRow, indexOfLastRow);
                 {stats.present}
               </h2>
               <span style={{ color: "green", fontSize: "14px" }}>
-                0% this week
-              </span>
+  {weeklyStats.presentPercentage}% this week
+</span>
             </div>
 
             <div style={cardStyle}>
@@ -263,8 +377,8 @@ const currentRows = myLogs.slice(indexOfFirstRow, indexOfLastRow);
                 {stats.absent}
               </h2>
               <span style={{ color: "red", fontSize: "14px" }}>
-                0% this week
-              </span>
+  {weeklyStats.absentPercentage}% this week
+</span>
             </div>
 
             <div style={cardStyle}>
@@ -323,14 +437,7 @@ const currentRows = myLogs.slice(indexOfFirstRow, indexOfLastRow);
                 : "Anomalies detected"}
             </h4>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              {/* <thead>
-                <tr style={{ background: "#f8f9fb", textAlign: "left" }}>
-                  <th style={thStyle}>Employee</th>
-                  <th style={thStyle}>Date</th>
-                  <th style={thStyle}>Type</th>
-                  <th style={thStyle}>Description</th>
-                </tr>
-              </thead> */}
+             
               <thead>
                 {["EMPLOYEE", "MANAGER", "HR"].includes(role) ? (
                   <tr style={{ background: "#f8f9fb", textAlign: "left" }}>
@@ -527,7 +634,7 @@ width: 20px !important;
                   </div>
                 </div>
 
-                {/* 📊 Leave Cards */}
+                {/*  Leave Cards */}
                 <div
                   style={{
                     flex: 1,
@@ -538,12 +645,14 @@ width: 20px !important;
                 >
                   <div style={cardStyle}>
                     <h4>Total Leaves</h4>
-                    <h2>{TOTAL_LEAVES}</h2>
+                    <h2>{leaveStats.totalLeaves}</h2>
                   </div>
 
                   <div style={cardStyle}>
                     <h4>Leaves Taken</h4>
-                    <h2 style={{ color: "red" }}>{leavesTaken}</h2>
+                    <h2 style={{ color: "red" }}>
+  {leaveStats.usedLeaves}
+</h2>
                   </div>
 
                   <div style={cardStyle}>
@@ -551,7 +660,7 @@ width: 20px !important;
                     <h2
                       style={{ color: remainingLeaves < 0 ? "red" : "green" }}
                     >
-                      {remainingLeaves}
+                     {leaveStats.remainingLeaves}
                     </h2>
                   </div>
 
@@ -583,23 +692,25 @@ width: 20px !important;
               <h4 style={{ margin: 0, color: "#333" }}>My Attendance</h4>
               <div style={{ display: "flex", gap: "10px" }}>
                 <button
-                  onClick={fetchMyAttendance}
-                  disabled={loading}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    border: "1px solid #ddd",
-                    background: loading ? "#f5f5f5" : "#fff",
-                    color: loading ? "#999" : "#333",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "5px",
-                  }}
-                >
-                  🔄 Refresh
-                </button>
+  onClick={async () => {
+    await fetchMyAttendance();
+  }}
+  disabled={loading}
+  style={{
+    padding: "8px 16px",
+    borderRadius: "6px",
+    border: "1px solid #ddd",
+    background: loading ? "#f5f5f5" : "#fff",
+    color: loading ? "#999" : "#333",
+    cursor: loading ? "not-allowed" : "pointer",
+    fontSize: "14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "5px",
+  }}
+>
+  {loading ? "Refreshing..." : "🔄 Refresh"}
+</button>
                 <span
                   style={{
                     padding: "4px 12px",
@@ -723,7 +834,7 @@ width: 20px !important;
                   </thead>
                   <tbody>
                     {currentRows.length > 0 ? (
-                     currentRows.map((attendance) => (
+                      currentRows.map((attendance) => (
                         <tr key={attendance._id}>
                           <td style={tdStyle}>{formatDate(attendance.date)}</td>
                           <td style={tdStyle}>

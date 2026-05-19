@@ -5,7 +5,8 @@ const {
   applyLeave,
   getMyLeaves,
   getAllLeaves,
-  updateLeaveStatus
+  updateLeaveStatus,
+  getLeaveStats
 } = require("./leave.controller");
 
 const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
@@ -14,7 +15,7 @@ const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
 router.post(
   "/apply",
   protect,
-  authorizeRoles("EMPLOYEE"),
+  authorizeRoles("EMPLOYEE","MANAGER","HR"),
   applyLeave
 );
 
@@ -22,7 +23,7 @@ router.post(
 router.get(
   "/my",
   protect,
-  authorizeRoles("EMPLOYEE"),
+  authorizeRoles("EMPLOYEE","MANAGER","HR"),
   getMyLeaves
 );
 
@@ -30,7 +31,7 @@ router.get(
 router.get(
   "/all",
   protect,
-  authorizeRoles("ADMIN", "HR"),
+  authorizeRoles("ADMIN", "HR","MANAGER"),
   getAllLeaves
 );
 
@@ -40,6 +41,12 @@ router.put(
   protect,
   authorizeRoles("ADMIN", "HR"),
   updateLeaveStatus
+);
+// Get leave statistics
+router.get(
+  "/leave-stats/:employeeId",
+  protect,
+  getLeaveStats
 );
 
 module.exports = router;

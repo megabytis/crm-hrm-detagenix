@@ -5,7 +5,7 @@ import { leaveService } from "../../services/leaveService";
 const LeaveManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 5;
-  
+
   // State for API data
   const [leaveData, setLeaveData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -13,125 +13,192 @@ const LeaveManagement = () => {
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  
+  const [successMessage, setSuccessMessage] = useState("");
+  // const user = JSON.parse(localStorage.getItem("user") || "{}"); // get user from localstorage
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+const user = storedUser.user || storedUser;
+
+console.log("USER:", user);
+console.log("USER ID:", user?._id);
+  const role = user?.role?.toUpperCase() || "";
+
+  // Default view
+  const getDefaultView = () => {
+    if (role === "ADMIN") return "ALL";
+    return "MY";
+  };
+
+  const [view, setView] = useState(getDefaultView());
+
   // Form state for apply leave
   const [newLeave, setNewLeave] = useState({
-    leaveType: 'Sick',
-    fromDate: '',
-    toDate: '',
-    reason: ''
+    leaveType: "Sick",
+    fromDate: "",
+    toDate: "",
+    reason: "",
   });
+  const [leaveStats, setLeaveStats] = useState({
+  totalLeaves: 4,
+  usedLeaves: 0,
+  remainingLeaves: 4
+});
 
   // Fetch all leaves (Admin/HR view)
-  const fetchAllLeaves = async () => {
+  // const fetchAllLeaves = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await leaveService.getAllLeaves();
+  //     setLeaveData(response|| []); // Response is directly an array
+  //     setError(null);
+  //   } catch (error) {
+  //     console.error('Error fetching leaves:', error);
+  //     setError(error?.message || 'Failed to fetch leave data');
+  //     setLeaveData([]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+  const fetchLeaves = async () => {
     try {
       setLoading(true);
-      const response = await leaveService.getAllLeaves();
-      setLeaveData(response|| []); // Response is directly an array
+
+      let response;
+
+      if (view === "ALL") {
+        response = await leaveService.getAllLeaves();
+      } else {
+        response = await leaveService.getMyLeaves();
+      }
+
+      // console.log("LEAVE RESPONSE:", response);
+
+      setLeaveData(Array.isArray(response) ? response : response?.leaves || []);
+
       setError(null);
     } catch (error) {
-      console.error('Error fetching leaves:', error);
-      setError(error?.message || 'Failed to fetch leave data');
+      console.error("Error fetching leaves:", error);
+      setError(error?.message || "Failed to fetch leave data");
       setLeaveData([]);
     } finally {
       setLoading(false);
     }
   };
+  const fetchLeaveStats = async () => {
+  try {
+
+   const response = await leaveService.getLeaveStats(user.id);
+    console.log("LEAVE STATS RESPONSE:", response);
+
+    // setLeaveStats(response);
+    setLeaveStats(response);
+
+  } catch (error) {
+    console.error("Error fetching leave stats:", error);
+  }
+};
 
   // Apply for leave
   const handleApplyLeave = async () => {
     try {
       const response = await leaveService.applyLeave(newLeave);
-      
+
       // Show success popup
-      setSuccessMessage('Leave application submitted successfully!');
+      setSuccessMessage("Leave application submitted successfully!");
       setShowSuccessPopup(true);
-      
+
       // Reset form and close modal
       setShowApplyModal(false);
       setNewLeave({
-        leaveType: 'Sick',
-        fromDate: '',
-        toDate: '',
-        reason: ''
+        leaveType: "Sick",
+        fromDate: "",
+        toDate: "",
+        reason: "",
       });
-      
+
       // Refresh data
-      await fetchAllLeaves();
+      await fetchLeaves();
     } catch (error) {
-      console.error('Error applying leave:', error);
-      alert('Failed to apply for leave. Please try again.');
+      console.error("Error applying leave:", error);
+      alert("Failed to apply for leave. Please try again.");
     }
   };
 
   const handleUpdateStatus = async (leaveId, newStatus) => {
-  try {
-    setUpdatingStatus(prev => ({ ...prev, [leaveId]: true }));
+    try {
+      setUpdatingStatus((prev) => ({ ...prev, [leaveId]: true }));
 
-    await leaveService.updateLeaveStatus(leaveId, newStatus);
+      await leaveService.updateLeaveStatus(leaveId, newStatus);
 
-    setSuccessMessage(`Leave ${newStatus} successfully!`);
-    setShowSuccessPopup(true);
+      setSuccessMessage(`Leave ${newStatus} successfully!`);
+      setShowSuccessPopup(true);
 
-    await fetchAllLeaves();
-
-  } catch (error) {
-    console.error('Error updating leave status:', error);
-    alert('Error updating leave status');
-  } finally {
-    setUpdatingStatus(prev => ({ ...prev, [leaveId]: false }));
-  }
-};
+      await fetchLeaves();
+    } catch (error) {
+      console.error("Error updating leave status:", error);
+      alert("Error updating leave status");
+    } finally {
+      setUpdatingStatus((prev) => ({ ...prev, [leaveId]: false }));
+    }
+  };
   // Calculate statistics
   const calculateStats = () => {
-    const pending = leaveData.filter(leave => leave.status === 'Pending').length;
-    const approved = leaveData.filter(leave => leave.status === 'Approved').length;
-    const rejected = leaveData.filter(leave => leave.status === 'Rejected').length;
-    
+    const pending = leaveData.filter(
+      (leave) => leave.status === "Pending",
+    ).length;
+    const approved = leaveData.filter(
+      (leave) => leave.status === "Approved",
+    ).length;
+    const rejected = leaveData.filter(
+      (leave) => leave.status === "Rejected",
+    ).length;
+
     return { pending, approved, rejected, total: leaveData.length };
   };
-
   const stats = calculateStats();
 
+  // const stats = calculateStats();
+
   // Fetch data on component mount
+  // useEffect(() => {
+  //   fetchAllLeaves();
+  // }, []);
   useEffect(() => {
-    fetchAllLeaves();
-  }, []);
+  fetchLeaves();
+  fetchLeaveStats();
+}, [view]);
 
   // Format date for display
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
       // Check if date is valid
-      if (isNaN(date.getTime())) return 'Invalid Date';
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
+      if (isNaN(date.getTime())) return "Invalid Date";
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
     } catch (error) {
-      console.error('Date formatting error:', error);
-      return 'Date Error';
+      console.error("Date formatting error:", error);
+      return "Date Error";
     }
   };
 
   // Calculate duration
   const calculateDuration = (fromDate, toDate) => {
-    if (!fromDate || !toDate) return 'N/A';
+    if (!fromDate || !toDate) return "N/A";
     const start = new Date(fromDate);
     const end = new Date(toDate);
     const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    return `${days} day${days > 1 ? 's' : ''}`;
+    return `${days} day${days > 1 ? "s" : ""}`;
   };
 
   const totalPages = Math.ceil(leaveData.length / rowsPerPage);
   const indexOfLast = currentPage * rowsPerPage;
   const indexOfFirst = indexOfLast - rowsPerPage;
   const currentRows = leaveData.slice(indexOfFirst, indexOfLast);
-
-  
 
   return (
     <DashboardLayout>
@@ -140,7 +207,38 @@ const LeaveManagement = () => {
       >
         <h2 style={{ marginBottom: "20px" }}>HRMS / Leave Management</h2>
 
-       
+        {(role === "HR" || role === "MANAGER") && (
+          <div style={{ marginBottom: "15px", display: "flex", gap: "10px" }}>
+            <button
+              onClick={() => setView("MY")}
+              style={{
+                padding: "8px 14px",
+                background: view === "MY" ? "#00bcd4" : "#eee",
+                color: view === "MY" ? "#fff" : "#000",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+              }}
+            >
+              My Leaves
+            </button>
+
+            <button
+              onClick={() => setView("ALL")}
+              style={{
+                padding: "8px 14px",
+                background: view === "ALL" ? "#00bcd4" : "#eee",
+                color: view === "ALL" ? "#fff" : "#000",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+              }}
+            >
+              All Employees
+            </button>
+          </div>
+        )}
+
         <div style={{ marginBottom: "20px" }}>
           <button
             onClick={() => setShowApplyModal(true)}
@@ -151,7 +249,7 @@ const LeaveManagement = () => {
               border: "none",
               borderRadius: "6px",
               cursor: "pointer",
-              fontSize: "14px"
+              fontSize: "14px",
             }}
           >
             Apply for Leave
@@ -159,8 +257,8 @@ const LeaveManagement = () => {
         </div>
 
         {/* Top Section */}
-        <div style={topGrid}>
-          {/* Left Stats */}
+        {/* <div style={topGrid}>
+         
           <div
             style={{ display: "flex", flexDirection: "column", gap: "20px" }}
           >
@@ -250,7 +348,43 @@ const LeaveManagement = () => {
               <button style={primaryBtn}>Review</button>
             </div>
           </div>
-        </div>
+        </div> */}
+        {role === "ADMIN" || view === "ALL" ? (
+          // 🔴 ADMIN CARDS (ALL VIEW)
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "16px",
+              marginTop: "20px",
+              marginBottom: "20px",
+              maxWidth: "750px",
+            }}
+          >
+            <StatCard title="New Requests" value={stats.pending} />
+            <StatCard title="Pending" value={stats.pending} />
+            <StatCard title="Approved" value={stats.approved} />
+          </div>
+        ) : (
+          // 🟢 EMPLOYEE CARDS (MY VIEW)
+          <div style={{ display: "flex", gap: "20px" }}>
+            <StatCard
+  title="Total Leaves"
+  value={leaveStats.totalLeaves}
+/>
+
+<StatCard
+  title="Used Leaves"
+  value={leaveStats.usedLeaves}
+/>
+
+<StatCard
+  title="Remaining Leaves"
+  value={leaveStats.remainingLeaves}
+/>
+            <StatCard title="WFH Days" value={2} />
+          </div>
+        )}
 
         {/* Leave Table */}
         <div style={{ ...card, marginTop: "20px" }}>
@@ -269,7 +403,10 @@ const LeaveManagement = () => {
                 <th style={th}>Leave Type</th>
                 <th style={th}>Duration</th>
                 <th style={th}>Status</th>
-                <th style={th}>Action</th>
+                {view === "ALL" &&
+                  (role === "ADMIN" || role === "HR" || role === "MANAGER") && (
+                    <th style={th}>Action</th>
+                  )}
               </tr>
             </thead>
             <tbody>
@@ -277,81 +414,125 @@ const LeaveManagement = () => {
               {leaveData.length > 0 ? (
                 leaveData.map((leave, index) => (
                   <tr key={leave._id || index}>
-                    <td style={td}>{leave.employee?._id || 'N/A'}</td>
-                    <td style={td}>{leave.employee?.name || 'Unknown'}</td>
+                    <td style={td}>{leave.employee?._id || "N/A"}</td>
+                    <td style={td}>{leave.employee?.name || "Unknown"}</td>
                     <td style={td}>{formatDate(leave.fromDate)}</td>
                     <td style={td}>{leave.leaveType}</td>
-                    <td style={td}>{calculateDuration(leave.fromDate, leave.toDate)}</td>
+                    <td style={td}>
+                      {calculateDuration(leave.fromDate, leave.toDate)}
+                    </td>
                     <td style={td}>
                       <span style={getStatusStyle(leave.status)}>
                         {leave.status}
                       </span>
                     </td>
-                    <td style={td}>
-                      {leave.status === 'Pending' && (
-                        <div style={{ display: "flex", gap: "5px" }}>
-                          <button
-                            onClick={() => handleUpdateStatus(leave._id, 'Approved')}
-                            disabled={updatingStatus[leave._id]}
-                            style={{
-                              padding: "4px 8px",
-                              background: updatingStatus[leave._id] ? "#ccc" : "#28a745",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: updatingStatus[leave._id] ? "not-allowed" : "pointer",
-                              fontSize: "12px"
-                            }}
-                          >
-                            {updatingStatus[leave._id] ? '...' : 'Approve'}
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStatus(leave._id, 'Rejected')}
-                            disabled={updatingStatus[leave._id]}
-                            style={{
-                              padding: "4px 8px",
-                              background: updatingStatus[leave._id] ? "#ccc" : "#dc3545",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: updatingStatus[leave._id] ? "not-allowed" : "pointer",
-                              fontSize: "12px"
-                            }}
-                          >
-                            {updatingStatus[leave._id] ? '...' : 'Reject'}
-                          </button>
-                        </div>
+                    {view === "ALL" &&
+                      (role === "ADMIN" ||
+                        role === "HR" ||
+                        role === "MANAGER") && (
+                        <td style={td}>
+                          {leave.status === "Pending" && (
+                            <div style={{ display: "flex", gap: "5px" }}>
+                              <button
+                                onClick={() =>
+                                  handleUpdateStatus(leave._id, "Approved")
+                                }
+                                disabled={updatingStatus[leave._id]}
+                                style={{
+                                  padding: "4px 8px",
+                                  background: updatingStatus[leave._id]
+                                    ? "#ccc"
+                                    : "#28a745",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: updatingStatus[leave._id]
+                                    ? "not-allowed"
+                                    : "pointer",
+                                  fontSize: "12px",
+                                }}
+                              >
+                                {updatingStatus[leave._id] ? "..." : "Approve"}
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  handleUpdateStatus(leave._id, "Rejected")
+                                }
+                                disabled={updatingStatus[leave._id]}
+                                style={{
+                                  padding: "4px 8px",
+                                  background: updatingStatus[leave._id]
+                                    ? "#ccc"
+                                    : "#dc3545",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: updatingStatus[leave._id]
+                                    ? "not-allowed"
+                                    : "pointer",
+                                  fontSize: "12px",
+                                }}
+                              >
+                                {updatingStatus[leave._id] ? "..." : "Reject"}
+                              </button>
+                            </div>
+                          )}
+                        </td>
                       )}
-                    </td>
                   </tr>
                 ))
               ) : loading ? (
                 <tr>
-                  <td colSpan="7" style={{ 
-                    padding: "20px", 
-                    textAlign: "center", 
-                    color: "#666"
-                  }}>
+                  <td
+                    colSpan={
+                      view === "ALL" &&
+                      (role === "ADMIN" || role === "HR" || role === "MANAGER")
+                        ? 7
+                        : 6
+                    }
+                    style={{
+                      padding: "20px",
+                      textAlign: "center",
+                      color: "#666",
+                    }}
+                  >
                     Loading leave data...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="7" style={{ 
-                    padding: "20px", 
-                    textAlign: "center", 
-                    color: "red"
-                  }}>
+                  <td
+                    colSpan={
+                      view === "ALL" &&
+                      (role === "ADMIN" || role === "HR" || role === "MANAGER")
+                        ? 7
+                        : 6
+                    }
+                    style={{
+                      padding: "20px",
+                      textAlign: "center",
+                      color: "red",
+                    }}
+                  >
                     {error}
                   </td>
                 </tr>
               ) : (
                 <tr>
-                  <td colSpan="7" style={{ 
-                    padding: "20px", 
-                    textAlign: "center", 
-                    color: "#666"
-                  }}>
+                  <td
+                    colSpan={
+                      view === "ALL" &&
+                      (role === "ADMIN" || role === "HR" || role === "MANAGER")
+                        ? 7
+                        : 6
+                    }
+                    style={{
+                      padding: "20px",
+                      textAlign: "center",
+                      color: "#666",
+                    }}
+                  >
                     No leave records found
                   </td>
                 </tr>
@@ -395,37 +576,51 @@ const LeaveManagement = () => {
 
         {/* Apply Leave Modal */}
         {showApplyModal && (
-          <div style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000
-          }}>
-            <div style={{
-              background: "white",
-              padding: "30px",
-              borderRadius: "12px",
-              width: "500px",
-              maxWidth: "90%"
-            }}>
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+          >
+            <div
+              style={{
+                background: "white",
+                padding: "30px",
+                borderRadius: "12px",
+                width: "500px",
+                maxWidth: "90%",
+              }}
+            >
               <h3 style={{ marginBottom: "20px" }}>Apply for Leave</h3>
-              
+
               <div style={{ marginBottom: "15px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontSize: "14px" }}>Leave Type</label>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "14px",
+                  }}
+                >
+                  Leave Type
+                </label>
                 <select
                   value={newLeave.leaveType}
-                  onChange={(e) => setNewLeave({ ...newLeave, leaveType: e.target.value })}
+                  onChange={(e) =>
+                    setNewLeave({ ...newLeave, leaveType: e.target.value })
+                  }
                   style={{
                     width: "100%",
                     padding: "8px",
                     border: "1px solid #ddd",
-                    borderRadius: "4px"
+                    borderRadius: "4px",
                   }}
                 >
                   <option value="Sick">Sick Leave</option>
@@ -435,40 +630,70 @@ const LeaveManagement = () => {
               </div>
 
               <div style={{ marginBottom: "15px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontSize: "14px" }}>From Date</label>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "14px",
+                  }}
+                >
+                  From Date
+                </label>
                 <input
                   type="date"
                   value={newLeave.fromDate}
-                  onChange={(e) => setNewLeave({ ...newLeave, fromDate: e.target.value })}
+                  onChange={(e) =>
+                    setNewLeave({ ...newLeave, fromDate: e.target.value })
+                  }
                   style={{
                     width: "100%",
                     padding: "8px",
                     border: "1px solid #ddd",
-                    borderRadius: "4px"
+                    borderRadius: "4px",
                   }}
                 />
               </div>
 
               <div style={{ marginBottom: "15px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontSize: "14px" }}>To Date</label>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "14px",
+                  }}
+                >
+                  To Date
+                </label>
                 <input
                   type="date"
                   value={newLeave.toDate}
-                  onChange={(e) => setNewLeave({ ...newLeave, toDate: e.target.value })}
+                  onChange={(e) =>
+                    setNewLeave({ ...newLeave, toDate: e.target.value })
+                  }
                   style={{
                     width: "100%",
                     padding: "8px",
                     border: "1px solid #ddd",
-                    borderRadius: "4px"
+                    borderRadius: "4px",
                   }}
                 />
               </div>
 
               <div style={{ marginBottom: "20px" }}>
-                <label style={{ display: "block", marginBottom: "5px", fontSize: "14px" }}>Reason</label>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "14px",
+                  }}
+                >
+                  Reason
+                </label>
                 <textarea
                   value={newLeave.reason}
-                  onChange={(e) => setNewLeave({ ...newLeave, reason: e.target.value })}
+                  onChange={(e) =>
+                    setNewLeave({ ...newLeave, reason: e.target.value })
+                  }
                   placeholder="Enter reason for leave..."
                   style={{
                     width: "100%",
@@ -476,20 +701,26 @@ const LeaveManagement = () => {
                     border: "1px solid #ddd",
                     borderRadius: "4px",
                     minHeight: "80px",
-                    resize: "vertical"
+                    resize: "vertical",
                   }}
                 />
               </div>
 
-              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "flex-end",
+                }}
+              >
                 <button
                   onClick={() => {
                     setShowApplyModal(false);
                     setNewLeave({
-                      leaveType: 'Sick',
-                      fromDate: '',
-                      toDate: '',
-                      reason: ''
+                      leaveType: "Sick",
+                      fromDate: "",
+                      toDate: "",
+                      reason: "",
                     });
                   }}
                   style={{
@@ -498,21 +729,29 @@ const LeaveManagement = () => {
                     color: "white",
                     border: "none",
                     borderRadius: "4px",
-                    cursor: "pointer"
+                    cursor: "pointer",
                   }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleApplyLeave}
-                  disabled={!newLeave.fromDate || !newLeave.toDate || !newLeave.reason}
+                  disabled={
+                    !newLeave.fromDate || !newLeave.toDate || !newLeave.reason
+                  }
                   style={{
                     padding: "8px 16px",
-                    background: (!newLeave.fromDate || !newLeave.toDate || !newLeave.reason) ? "#ccc" : "#00bcd4",
+                    background:
+                      !newLeave.fromDate || !newLeave.toDate || !newLeave.reason
+                        ? "#ccc"
+                        : "#00bcd4",
                     color: "white",
                     border: "none",
                     borderRadius: "4px",
-                    cursor: (!newLeave.fromDate || !newLeave.toDate || !newLeave.reason) ? "not-allowed" : "pointer"
+                    cursor:
+                      !newLeave.fromDate || !newLeave.toDate || !newLeave.reason
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
                   Apply Leave
@@ -535,7 +774,7 @@ const LeaveManagement = () => {
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              zIndex: "1000"
+              zIndex: "1000",
             }}
             onClick={() => setShowSuccessPopup(false)}
           >
@@ -547,7 +786,7 @@ const LeaveManagement = () => {
                 textAlign: "center",
                 boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
                 maxWidth: "400px",
-                width: "90%"
+                width: "90%",
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -560,7 +799,7 @@ const LeaveManagement = () => {
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
-                  margin: "0 auto 20px"
+                  margin: "0 auto 20px",
                 }}
               >
                 <svg
@@ -574,15 +813,15 @@ const LeaveManagement = () => {
                   <path d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              
-              <h3 style={{ margin: "0 0 10px", color: "#333" }}>
-                Success!
-              </h3>
-              
-              <p style={{ margin: "0 0 20px", color: "#666", fontSize: "14px" }}>
+
+              <h3 style={{ margin: "0 0 10px", color: "#333" }}>Success!</h3>
+
+              <p
+                style={{ margin: "0 0 20px", color: "#666", fontSize: "14px" }}
+              >
                 {successMessage}
               </p>
-              
+
               <button
                 style={{
                   padding: "10px 20px",
@@ -591,7 +830,7 @@ const LeaveManagement = () => {
                   border: "none",
                   borderRadius: "6px",
                   cursor: "pointer",
-                  fontSize: "14px"
+                  fontSize: "14px",
                 }}
                 onClick={() => setShowSuccessPopup(false)}
               >
@@ -614,7 +853,6 @@ const StatCard = ({ title, value, growth, color }) => (
     <p style={{ fontSize: "12px", color }}>{growth}</p>
   </div>
 );
-
 
 /* Styles */
 

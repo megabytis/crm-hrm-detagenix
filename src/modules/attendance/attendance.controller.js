@@ -1,8 +1,8 @@
 const Attendance = require("./attendance.model");
-
+const User = require("../users/user.model");
 
 // ==========================
-// ✅ 
+// ✅
 // ==========================
 // exports.punchIn = async (req, res) => {
 //   try {
@@ -63,18 +63,19 @@ exports.punchIn = async (req, res) => {
     let status = "Present";
 
     if (now > officeTime && now.getHours() < 10) {
-  status = "Late";
-} else if (now.getHours() >= 10 && now.getHours() < 13) {
-  status = "Half Day";
-} else if (now.getHours() >= 13) {
-  status = "Absent";
-}
+      status = "Late";
+    } else if (now.getHours() >= 10 && now.getHours() < 13) {
+      status = "Half Day";
+    } else if (now.getHours() >= 13) {
+      status = "Absent";
+    }
 
     const attendance = await Attendance.create({
       tenantId: req.user.tenantId,
       employee: req.user.id,
       checkIn: now,
-      status,
+      date: now,
+      status, // 👈 IMPORTANT
     });
 
     res.status(201).json({
@@ -86,7 +87,6 @@ exports.punchIn = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // ==========================
 // ✅ Punch Out
@@ -119,7 +119,6 @@ exports.punchOut = async (req, res) => {
   }
 };
 
-
 // ==========================
 // ✅ Employee - Get My Attendance
 // ==========================
@@ -129,8 +128,8 @@ exports.getMyAttendance = async (req, res) => {
       tenantId: req.user.tenantId,
       employee: req.user.id,
     })
-    .populate("employee", "name email") 
-    .sort({ date: -1 });
+      .populate("employee", "name email")
+      .sort({ date: -1 });
 
     res.status(200).json({
       success: true,
@@ -141,7 +140,6 @@ exports.getMyAttendance = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // ==========================
 // ✅ HR - Get All Employees Attendance
@@ -192,5 +190,65 @@ exports.getAllAttendance = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+exports.getTodayAttendanceStats = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const attendance = await Attendance.find({
+      date: { $gte: today, $lt: tomorrow },
+    });
+
+    const uniqueEmployees = new Set(
+      attendance.map((a) => a.employee.toString()),
+    );
+
+    const present = uniqueEmployees.size;
+
+    const totalEmployees = await User.countDocuments({
+      role: "EMPLOYEE",
+      designation: "Developer",
+    });
+
+    const absent = totalEmployees - present;
+
+    res.json({
+      present,
+      absent,
+      totalEmployees,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+exports.getEmployeeOverview = async (req, res) => {
+  try {
+    // 👉 sirf developers
+    const developers = await User.find({
+      role: "EMPLOYEE",
+      designation: "Developer", // check karo DB me same field ho
+    });
+
+    const totalEmployees = developers.length;
+
+    // 👉 active = jinke paas project assign hai
+    const activeEmployees = developers.filter((emp) => emp.project);
+
+    // 👉 bench = jinke paas project nahi
+    const benchEmployees = developers.filter((emp) => !emp.project);
+
+    res.json({
+      totalEmployees,
+      activeEmployees: activeEmployees.length,
+      onBench: benchEmployees.length,
+    });
+  } catch (error) {
+    console.error("EMPLOYEE OVERVIEW ERROR:", error);
+    res.status(500).json({ message: error.message });
   }
 };

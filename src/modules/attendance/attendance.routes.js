@@ -5,7 +5,9 @@ const {
   punchIn,
   punchOut,
   getMyAttendance,
-  getAllAttendance
+  getAllAttendance,
+  getTodayAttendanceStats,
+  getEmployeeOverview 
 } = require("./attendance.controller");
 
 const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
@@ -18,4 +20,6 @@ router.get("/my", protect, authorizeRoles("EMPLOYEE", "MANAGER", "HR"), getMyAtt
 
 // HR + ADMIN + MANAGER → sabka data dekh sakte hain
 router.get("/all", protect, authorizeRoles("HR", "ADMIN", "MANAGER"), getAllAttendance);
+router.get("/dashboard-stats", getTodayAttendanceStats); // 
+router.get("/employee-overview", getEmployeeOverview);
 module.exports = router;

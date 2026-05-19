@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../DashboardComponents/DashboardLayout";
 import { attendanceService } from "../../services/attendanceService";
+import { userService } from "../../services/userService";
+import { projectService } from "../../services/projectService";
+
 
 const AttendanceManagement = () => {
   // State for attendance data
@@ -19,19 +22,106 @@ const AttendanceManagement = () => {
   const rowsPerPage = 4;
   const [currentPageTop, setCurrentPageTop] = useState(1);
   const rowsPerPageTop = 3;
+  const [stats, setStats] = useState({
+  present: 0,
+  absent: 0,
+  presentPercentage: 0,
+  absentPercentage: 0,
+});
 
-  // Fetch all employees attendance on component mount
-  useEffect(() => {
-    // 👇 EMPLOYEE + MANAGER + HR → apna data
-    if (["EMPLOYEE", "MANAGER", "HR"].includes(role)) {
-      fetchMyAttendance();
-    }
+useEffect(() => {
+  fetchStats();
+  fetchOverview();
 
-    // 👇 ADMIN + MANAGER + HR → sabka data
-    if (["ADMIN", "MANAGER", "HR"].includes(role)) {
-      fetchAllAttendance();
-    }
-  }, [role]);
+  if (["ADMIN", "MANAGER", "HR"].includes(role)) {
+    fetchAllAttendance();
+  }
+
+  if (["EMPLOYEE", "MANAGER", "HR"].includes(role)) {
+    fetchMyAttendance();
+  }
+
+}, [role]);
+
+  
+// const fetchStats = async () => {
+//   try {
+//     const res = await attendanceService.getDashboardStats();
+
+//     console.log("STATS:", res);
+
+//     if (!res || typeof res !== "object") {
+//       console.log("Stats API empty hai");
+//       return;
+//     }
+
+//     setStats({
+//       present: res.present ?? 0,
+//       absent: res.absent ?? 0,
+//       late: res.late ?? 0,
+//     });
+
+//   } catch (err) {
+//     console.error("Stats error:", err);
+//   }
+// }; 
+const fetchStats = async () => {
+  try {
+    // attendance data
+    const attendanceRes = await attendanceService.getAllAttendance();
+    const attendance = attendanceRes?.data || [];
+
+    // users data
+    const usersRes = await userService.getAll();
+    const users = usersRes?.data || [];
+
+    // total employees
+    const totalEmployees = users.length;
+
+    // today date
+    const today = new Date().toDateString();
+
+    // today's present count
+    const present = attendance.filter((att) => {
+      const attDate = new Date(att.date).toDateString();
+
+      return (
+        attDate === today &&
+        (
+          att.status?.toLowerCase() === "present" ||
+          att.status?.toLowerCase() === "half day"
+        )
+      );
+    }).length;
+
+    // absent = total - present
+    const absent = totalEmployees - present;
+
+    // percentage
+    const presentPercentage = totalEmployees
+      ? ((present / totalEmployees) * 100).toFixed(1)
+      : 0;
+
+    const absentPercentage = totalEmployees
+      ? ((absent / totalEmployees) * 100).toFixed(1)
+      : 0;
+
+    setStats({
+      present,
+      absent,
+      presentPercentage,
+      absentPercentage,
+    });
+
+  } catch (err) {
+    console.error("Stats error:", err);
+  }
+};
+const [overview, setOverview] = useState({
+  totalEmployees: 0,
+  activeEmployees: 0,
+  onBench: 0
+});
 
   const fetchAllAttendance = async () => {
     try {
@@ -52,13 +142,70 @@ const AttendanceManagement = () => {
       setLoading(false);
     }
   };
-  const fetchMyAttendance = async () => {
+
+
+ const fetchOverview = async () => {
+  try {
+
+    // all users
+    const usersRes = await userService.getAll();
+    console.log("USERS RES:", usersRes);
+
+    const users = usersRes?.data || [];
+
+    // all projects
+    const projectsRes = await projectService.getProjectsByRole();
+    console.log("PROJECTS RES:", projectsRes);
+
+    const projects = projectsRes || [];
+
+    // total employees
+    const totalEmployees = users.length;
+
+    const activeIds = new Set();
+
+    // HR + MANAGER + BDE always active
+    users.forEach((u) => {
+      const role = u.role?.toUpperCase();
+
+      if (
+        role === "HR" ||
+        role === "MANAGER" ||
+        role === "BDE"
+      ) {
+        activeIds.add(u._id);
+      }
+    });
+
+    // assigned employees active
+    projects.forEach((project) => {
+      project.assignedEmployees?.forEach((emp) => {
+        activeIds.add(emp._id || emp);
+      });
+    });
+
+    const activeEmployees = activeIds.size;
+
+    const onBench = totalEmployees - activeEmployees;
+
+    setOverview({
+      totalEmployees,
+      activeEmployees,
+      onBench,
+    });
+
+  } catch (err) {
+    console.error("Overview error:", err);
+  }
+};
+
+const fetchMyAttendance = async () => {
     try {
       const res = await attendanceService.getMyAttendance();
 
       console.log("MY DATA 👉", res);
 
-      setMyLogs(res || []); // 👈 yahi fix hai
+      setMyLogs(res || []); 
       // setMyLogs(res?.data || []);
     } catch (err) {
       console.error(err);
@@ -70,44 +217,64 @@ const AttendanceManagement = () => {
     const checkIn = new Date(checkInTime);
 
     const officeTime = new Date(checkIn);
-    officeTime.setHours(9, 30, 0, 0); // 9:30 AM
+    officeTime.setHours(9, 30, 0, 0); 
 
     return checkIn > officeTime;
   };
-  const handlePunchIn = async () => {
-    try {
-      setPunchingIn(true);
+ const handlePunchIn = async () => {
+  try {
+    setPunchingIn(true);
 
-      const res = await attendanceService.punchIn();
+    const res = await attendanceService.punchIn();
 
-      if (res?.success) {
-        await fetchMyAttendance(); // 👈 important
-        alert("Punched in successfully!");
+    console.log("PUNCH IN RES 👉", res); 
+
+    if (res) {   
+      await fetchMyAttendance();
+
+      try {
+        await fetchStats(); 
+      } catch (e) {
+        console.log("Stats error ignore:", e);
       }
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setPunchingIn(false);
-    }
-  };
 
-  // Handle Punch Out
+      alert("Punched in successfully!");
+    }
+
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setPunchingIn(false);
+  }
+};
+
+  
   const handlePunchOut = async () => {
-    try {
-      setPunchingOut(true);
+  try {
+    setPunchingOut(true);
 
-      const res = await attendanceService.punchOut();
+    const res = await attendanceService.punchOut();
 
-      if (res?.success) {
-        await fetchMyAttendance(); // 👈 refresh real data
-        alert("Punched out successfully!");
+    console.log("PUNCH OUT RES 👉", res); 
+
+    if (res) {   
+      await fetchMyAttendance();
+
+      try {
+        await fetchStats(); 
+      } catch (e) {
+        console.log("Stats error ignore:", e);
       }
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      setPunchingOut(false);
+
+      alert("Punched out successfully!");
     }
-  };
+
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    setPunchingOut(false);
+  }
+};
 
   // Calculate statistics from fetched data
   const calculateStats = () => {
@@ -122,7 +289,7 @@ const AttendanceManagement = () => {
     return { present, absent, late };
   };
 
-  const stats = calculateStats();
+  // const stats = calculateStats();
 
   // Pagination calculations
   const totalPages = Math.ceil(attendanceData.length / rowsPerPage);
@@ -218,20 +385,20 @@ const AttendanceManagement = () => {
             <div style={cardStyle}>
               <h4 style={{ margin: 0, color: "#555" }}>Present</h4>
               <h2 style={{ margin: "10px 0", color: "#000" }}>
-                {stats.present}
+                {stats.presentPercentage}
               </h2>
               <span style={{ color: "green", fontSize: "14px" }}>
-                0% this week
+                % this week
               </span>
             </div>
 
             <div style={cardStyle}>
               <h4 style={{ margin: 0, color: "#555" }}>Absent</h4>
               <h2 style={{ margin: "10px 0", color: "#000" }}>
-                {stats.absent}
+               {stats.absentPercentage}
               </h2>
               <span style={{ color: "red", fontSize: "14px" }}>
-                0% this week
+                % this week
               </span>
             </div>
 
@@ -249,31 +416,38 @@ const AttendanceManagement = () => {
     }}
   >
     {/* Total Employees */}
-    <div style={{ ...cardStyle, flex: "1", minWidth: "180px" }}>
-      <h4 style={{ margin: 0, color: "#555" }}>Total Employees</h4>
-      <h2 style={{ margin: "10px 0", color: "#000" }}>25</h2>
-      <span style={{ color: "#888", fontSize: "13px" }}>
-        Overall workforce
-      </span>
-    </div>
+    {/* Total Employees */}
+<div style={{ ...cardStyle, flex: "1", minWidth: "180px" }}>
+  <h4 style={{ margin: 0, color: "#555" }}>Total Employees</h4>
+  <h2 style={{ margin: "10px 0", color: "#000" }}>
+    {overview.totalEmployees}
+  </h2>
+  <span style={{ color: "#888", fontSize: "13px" }}>
+    Overall workforce
+  </span>
+</div>
 
-    {/* Active Employees */}
-    <div style={{ ...cardStyle, flex: "1", minWidth: "180px" }}>
-      <h4 style={{ margin: 0, color: "#555" }}>Active Employees</h4>
-      <h2 style={{ margin: "10px 0", color: "green" }}>18</h2>
-      <span style={{ color: "green", fontSize: "13px" }}>
-        Currently working
-      </span>
-    </div>
+{/* Active Employees */}
+<div style={{ ...cardStyle, flex: "1", minWidth: "180px" }}>
+  <h4 style={{ margin: 0, color: "#555" }}>Active Employees</h4>
+  <h2 style={{ margin: "10px 0", color: "green" }}>
+    {overview.activeEmployees}
+  </h2>
+  <span style={{ color: "green", fontSize: "13px" }}>
+    Currently working
+  </span>
+</div>
 
-    {/* Bench Employees */}
-    <div style={{ ...cardStyle, flex: "1", minWidth: "180px" }}>
-      <h4 style={{ margin: 0, color: "#555" }}>On Bench</h4>
-      <h2 style={{ margin: "10px 0", color: "orange" }}>7</h2>
-      <span style={{ color: "orange", fontSize: "13px" }}>
-        No active project
-      </span>
-    </div>
+{/* Bench Employees */}
+<div style={{ ...cardStyle, flex: "1", minWidth: "180px" }}>
+  <h4 style={{ margin: 0, color: "#555" }}>On Bench</h4>
+  <h2 style={{ margin: "10px 0", color: "orange" }}>
+    {overview.onBench}
+  </h2>
+  <span style={{ color: "orange", fontSize: "13px" }}>
+    No active project
+  </span>
+</div>
   </div>
 </div>
         </div>
@@ -296,7 +470,12 @@ const AttendanceManagement = () => {
               </h4>
               <div style={{ display: "flex", gap: "10px" }}>
                 <button
-                  onClick={fetchAllAttendance}
+                  // onClick={fetchAllAttendance}
+                  onClick={async () => {
+  await fetchAllAttendance();
+  await fetchStats();
+  await fetchOverview();
+}}
                   disabled={loading}
                   style={{
                     padding: "8px 16px",

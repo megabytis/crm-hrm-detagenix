@@ -30,6 +30,18 @@ export const attendanceService = {
   getMyAttendance: async () => {
   const response = await api.get("/hrm/attendance/my");
   return response.data; // 👈 pura object return karo
-}
+},
+ getDashboardStats: async () => {
+    const response = await api.get("/hrm/attendance/dashboard-stats");
+    
+    return response;
+  },
+
+  // ⭐ ADD THIS: Employee Overview
+  getEmployeeOverview: async () => {
+    const response = await api.get("/hrm/attendance/employee-overview");
+     
+    return response;
+  },
   
 };
