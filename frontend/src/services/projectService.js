@@ -8,10 +8,10 @@ export const projectService = {
   // },
 
   // Get all projects
-  getAllProjects: async () => {
-    const response = await api.get('/projects/all');
-    return response;
-  },
+  // getAllProjects: async () => {
+  //   const response = await api.get('/projects/all');
+  //   return response;
+  // },
    getProjectsByRole: async () => {
   const response = await api.get('/projects');
   return response.data;
