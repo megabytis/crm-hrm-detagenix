@@ -93,11 +93,11 @@ const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
  *   description: Project management APIs
  */
 
-// ✅ Create Project (HR & ADMIN)
+// ✅ Create Project (HR only)
 router.post(
   "/create",
   protect,
-  authorizeRoles("HR", "ADMIN"),
+  authorizeRoles("HR"),
   controller.createProject
 );
 
