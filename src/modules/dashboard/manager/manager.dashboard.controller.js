@@ -8,7 +8,7 @@ exports.getManagerDashboard = async (req, res) => {
   try {
     const data = await managerService.getManagerDashboard(
       req.user.id,
-      req.user.tenantId,
+      req.user.tenantId, // company replaced with tenantId to match with user Schema field
       req.query
     );
 

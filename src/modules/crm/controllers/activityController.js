@@ -1,5 +1,8 @@
 const Activity = require("../models/activity");
 
+// Added tenantId filtering across all queries
+// to enforce multi-tenancy — each tenant can only access their own data.
+
 /**
  * Create Activity
  */

@@ -1,4 +1,8 @@
 const Customer = require("../models/Customer");
+
+// Added tenantId filtering across all queries
+// to enforce multi-tenancy — each tenant can only access their own data.
+
 /**
  * CREATE CUSTOMER
  */

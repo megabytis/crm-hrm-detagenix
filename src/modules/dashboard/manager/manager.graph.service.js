@@ -13,6 +13,8 @@ const getGraphData = async (user, query) => {
     ? new Date(endDate)
     : new Date();
 
+  // manager and company replaced with reportingTo and tenantId to match with user Schema field
+  // company replaced with tenantId to match with user Schema field
   const teamMembers = await User.find({
     reportingTo: user.id,
     tenantId: user.tenantId

@@ -2,6 +2,10 @@
 const Lead = require("../models/Lead");
 const aiService = require("../../../utils/aiService");
 
+// Added tenantId filtering across all queries
+// to enforce multi-tenancy — each tenant can only access their own data.
+// also integrated AI modules to call FastAPI endpoint
+
 /**
  * CREATE LEAD
  */

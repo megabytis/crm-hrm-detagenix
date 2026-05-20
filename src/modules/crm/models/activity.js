@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 
+// Added tenantId field to activity schema
+// to enforce multi-tenancy — each tenant can only access their own data.
+
 const activitySchema = new mongoose.Schema(
   {
     tenantId: {

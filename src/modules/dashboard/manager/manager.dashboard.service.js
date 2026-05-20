@@ -16,6 +16,7 @@ const getManagerDashboard = async (managerId, companyId, query) => {
     // =========================
     // TEAM
     // =========================
+    // manager and company replaced with reportingTo and tenantId to match with user Schema field
     const team = await User.find({
       reportingTo: managerId,
       tenantId: companyId,

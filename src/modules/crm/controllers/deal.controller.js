@@ -1,5 +1,8 @@
 const Deal = require("../models/Deal");
 
+// Added tenantId filtering across all queries
+// to enforce multi-tenancy — each tenant can only access their own data.
+
 exports.createDeal = async (req, res) => {
   const deal = await Deal.create({
     ...req.body,

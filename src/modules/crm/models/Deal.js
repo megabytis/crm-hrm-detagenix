@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 
+// Added tenantId field to Deal schema
+// to enforce multi-tenancy — each tenant can only access their own data.
+
 const dealSchema = new mongoose.Schema(
   {
     tenantId: {
