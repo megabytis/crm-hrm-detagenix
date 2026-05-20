@@ -7,7 +7,7 @@ const { authorizeRoles } = require("../../../middleware/role.middleware");
 
 // Protect all routes
 router.use(protect);
-router.use(authorizeRoles("Admin", "Manager", "BD"));
+router.use(authorizeRoles("ADMIN", "MANAGER", "BD"));
 
 router.post("/search-query", generateFromQuery);
 router.post("/qualify-search-results", qualifyResults);
