@@ -1,0 +1,44 @@
+{
+  "best_model": "XGBoostClassifier",
+  "trained_at": "2026-05-20T07:45:50.501572",
+  "dataset_rows": 3000,
+  "features": [
+    "email_open_rate",
+    "meeting_count",
+    "website_visits",
+    "response_speed",
+    "followup_response_rate",
+    "call_duration",
+    "proposal_requested",
+    "demo_requested",
+    "pricing_page_visits",
+    "form_submissions",
+    "linkedin_interaction",
+    "last_contact_days",
+    "interaction_count",
+    "budget_log",
+    "recency_weight",
+    "engagement_velocity",
+    "intent_score",
+    "response_quality",
+    "email_weighted",
+    "budget",
+    "revenue",
+    "company_size"
+  ],
+  "label_classes": [
+    "COLD",
+    "HOT",
+    "WARM"
+  ],
+  "metrics": {
+    "xgboost_accuracy": 0.915,
+    "randomforest_accuracy": 0.9117,
+    "best_accuracy": 0.915
+  },
+  "thresholds": {
+    "HOT": "> 0.65 composite score",
+    "WARM": "0.38 \u2013 0.65",
+    "COLD": "< 0.38"
+  }
+}
