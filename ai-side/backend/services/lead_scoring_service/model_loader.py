@@ -9,7 +9,7 @@ MODULE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = MODULE_DIR.parents[3]
 
 # Prefer the new canonical conversion-model location first.
-CANONICAL_ARTIFACT_DIR = PROJECT_ROOT / "ml_model" / "models" / "lead scoring engine"
+CANONICAL_ARTIFACT_DIR = PROJECT_ROOT / "ml_model" / "models" / "lead_scoring_engine"
 ALT_ARTIFACT_DIR = PROJECT_ROOT / "ml_model" / "lead scoring engine"
 MODELS_ROOT_ARTIFACT_DIR = PROJECT_ROOT / "ml_model" / "models"
 LEGACY_ARTIFACT_DIR = PROJECT_ROOT / "ml_model"

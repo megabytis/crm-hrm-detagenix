@@ -9,14 +9,114 @@ import json
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 from pymongo import MongoClient
 
 
 load_dotenv()
+
+
+# ─── LLM Configuration (shared with email_generator pattern) ─────────────────
+
+LLM_DEFAULT_MODEL = {
+    "openai": "gpt-4o-mini",
+    "groq": "llama-3.1-8b-instant",
+    "anthropic": "claude-3-haiku-20240307",
+    "gemini": "gemini-3.1-flash-lite-preview",
+}
+
+
+def _load_env_files() -> None:
+    service_dir = Path(__file__).resolve().parent
+    project_root = service_dir.parents[1]
+    env_candidates = [
+        project_root / ".env",
+        service_dir.parent / ".env",
+        service_dir / ".env",
+        Path.cwd() / ".env",
+    ]
+    for env_path in env_candidates:
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+
+
+def _resolve_provider_and_key() -> tuple[str, str]:
+    service_dir = Path(__file__).resolve().parent
+    project_root = service_dir.parents[1]
+    file_values = dotenv_values(project_root / ".env")
+
+    def _env_or_file(name: str) -> str:
+        env_val = os.getenv(name, "")
+        if env_val and env_val.strip():
+            return env_val.strip()
+        return str(file_values.get(name) or "").strip()
+
+    provider = _env_or_file("LLM_PROVIDER").lower()
+
+    generic_key = _env_or_file("LLM_API_KEY")
+    openai_key = _env_or_file("OPENAI_API_KEY")
+    groq_key = _env_or_file("GROQ_API_KEY")
+    anthropic_key = _env_or_file("ANTHROPIC_API_KEY")
+    gemini_key = _env_or_file("GEMINI_API_KEY") or _env_or_file("GOOGLE_API_KEY")
+
+    if not provider:
+        if gemini_key:
+            provider = "gemini"
+        elif openai_key or generic_key:
+            provider = "openai"
+        elif groq_key:
+            provider = "groq"
+        elif anthropic_key:
+            provider = "anthropic"
+        else:
+            provider = "openai"
+
+    provider_keys = {
+        "openai": openai_key,
+        "groq": groq_key,
+        "anthropic": anthropic_key,
+        "gemini": gemini_key,
+    }
+
+    if provider and not generic_key and not provider_keys.get(provider):
+        for fallback_provider in ["gemini", "openai", "groq", "anthropic"]:
+            if provider_keys.get(fallback_provider):
+                provider = fallback_provider
+                break
+
+    selected_key = generic_key or provider_keys.get(provider, "")
+    return provider, selected_key
+
+
+def _get_gemini_model_candidates() -> list[str]:
+    preferred = (os.getenv("GEMINI_MODEL", "") or "").strip()
+    candidates = [
+        preferred,
+        "gemini-3.1-flash-lite-preview",
+        "gemini-2.5-flash-lite",
+        "gemini-3.1-flash-preview",
+        "gemini-2.5-flash",
+    ]
+    deduped = []
+    seen = set()
+    for model_name in candidates:
+        if not model_name or model_name in seen:
+            continue
+        seen.add(model_name)
+        deduped.append(model_name)
+    return deduped
+
+
+_load_env_files()
+LLM_PROVIDER, LLM_API_KEY = _resolve_provider_and_key()
+if LLM_PROVIDER == "gemini":
+    LLM_MODEL = os.getenv("GEMINI_MODEL", os.getenv("LLM_MODEL", LLM_DEFAULT_MODEL["gemini"]))
+else:
+    LLM_MODEL = os.getenv("LLM_MODEL", LLM_DEFAULT_MODEL.get(LLM_PROVIDER, "gpt-4o-mini"))
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +312,90 @@ CONVERSATION TEXT:
         except json.JSONDecodeError as error:
             raise ValueError(f"LLM did not return valid JSON: {error}")
 
+    def _generate_with_groq(self, prompt: str) -> Dict[str, Any]:
+        api_key = os.getenv("GROQ_API_KEY") or LLM_API_KEY
+        model_name = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model_name,
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": "Return strict JSON output only."},
+                    {"role": "user", "content": prompt},
+                ],
+            },
+            timeout=120,
+        )
+
+        if response.status_code >= 400:
+            raise ValueError(f"Groq LLM generation failed: {response.text}")
+
+        payload = response.json()
+        content = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+        if not content:
+            raise ValueError("Groq LLM returned empty content")
+
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Groq LLM did not return valid JSON: {error}")
+
+    def _generate_with_gemini(self, prompt: str) -> Dict[str, Any]:
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or LLM_API_KEY
+        model_candidates = _get_gemini_model_candidates()
+        last_error = ""
+
+        for model_name in model_candidates:
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+            response = requests.post(
+                endpoint,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key,
+                },
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0,
+                        "maxOutputTokens": 600,
+                        "responseMimeType": "application/json",
+                    },
+                },
+                timeout=120,
+            )
+
+            if response.status_code == 200:
+                payload = response.json()
+                candidates = payload.get("candidates", [])
+                if not candidates:
+                    last_error = f"Gemini returned no candidates for {model_name}"
+                    continue
+                parts = candidates[0].get("content", {}).get("parts", [])
+                text = "".join(part.get("text", "") for part in parts).strip()
+                if not text:
+                    last_error = f"Gemini returned empty content for {model_name}"
+                    continue
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError as error:
+                    last_error = f"Gemini did not return valid JSON for {model_name}: {error}"
+                    continue
+
+            last_error = f"[{model_name}] {response.status_code}: {response.text}"
+            if response.status_code in {404, 429, 503}:
+                continue
+            raise ValueError(f"Gemini API call failed: {last_error}")
+
+        raise ValueError(f"Gemini API call failed after model fallbacks: {last_error}")
+
     def _sanitize_output(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         pain_points_raw = raw.get("pain_points") if isinstance(raw.get("pain_points"), list) else []
         pain_points: List[Dict[str, str]] = []
@@ -270,7 +454,13 @@ CONVERSATION TEXT:
         if not resolved_text:
             raise ValueError("No conversation text available. Provide text input or upload a valid file")
 
-        llm_raw = self._generate_with_llm(resolved_text)
+        try:
+            llm_raw = self._generate_with_llm(resolved_text)
+        except ValueError:
+            try:
+                llm_raw = self._generate_with_groq(resolved_text)
+            except ValueError:
+                llm_raw = self._generate_with_gemini(resolved_text)
         insights = self._sanitize_output(llm_raw)
 
         document = {

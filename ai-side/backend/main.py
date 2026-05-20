@@ -60,7 +60,7 @@ class LeadInput(BaseModel):
     name: str
     email: EmailStr
     phone: Optional[str] = None
-    
+
     # Professional details - matching Google Sheets columns
     highest_education: Optional[str] = None
     role_position: str
@@ -75,7 +75,7 @@ class LeadInput(BaseModel):
     company_name: Optional[str] = None
     company_website: Optional[str] = None
     company_email: Optional[str] = None
-    
+
     # Legacy fields (optional for backward compatibility)
     availability: Optional[str] = None
     interview_status: Optional[str] = None
@@ -194,7 +194,7 @@ async def health_check():
     """Detailed health check with service status."""
     return {
         "status": "healthy",
-        "service": "AI-Powered CRM ML Prediction API", 
+        "service": "AI-Powered CRM ML Prediction API",
         "version": "2.0.0",
         "timestamp": datetime.now().isoformat(),
         "components": {
@@ -382,7 +382,7 @@ def get_conversation_intelligence_service():
         return _conversation_intelligence_service
 
     service_dir = Path(__file__).resolve().parent
-    service_path = service_dir / "conversation intelligence engine" / "conversation_intelligence_service.py"
+    service_path = service_dir / "services" / "conversation intelligence engine" / "conversation_intelligence_service.py"
 
     if not service_path.exists():
         raise ImportError(f"Conversation intelligence service file not found at {service_path}")
@@ -435,17 +435,17 @@ async def predict_lead_temperature(payload: Dict[str, Any]):
             raise HTTPException(status_code=400, detail=validation_error.errors())
 
         lead_data = lead.model_dump()
-        
+
         # Process with ML (lazy loaded)
         ml_service = get_ml_service()
         result = ml_service.process_lead_with_ml(lead_data)
-        
+
         if 'error' in result.get('ml_prediction', {}):
             raise HTTPException(
-                status_code=500, 
+                status_code=500,
                 detail=f"ML prediction failed: {result['ml_prediction']['error']}"
             )
-        
+
         return {
             "success": True,
             "unique_id": result['unique_id'],
@@ -729,19 +729,19 @@ async def get_lead(unique_id: str):
         from services.ml_prediction_service import get_lead_with_prediction
         ml_service = get_ml_service()
         lead = ml_service.get_lead_with_prediction(unique_id)
-        
+
         if not lead:
             raise HTTPException(status_code=404, detail="Lead not found")
-        
+
         # Clean up MongoDB ObjectId for JSON serialization
         if '_id' in lead:
             lead['_id'] = str(lead['_id'])
-        
+
         return {
             "success": True,
             "lead": lead
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -793,22 +793,22 @@ async def get_leads_by_temperature(
         # Validate temperature parameter
         if temperature not in ["Hot", "Warm", "Cold"]:
             raise HTTPException(status_code=400, detail="Temperature must be Hot, Warm, or Cold")
-        
+
         ml_service = get_ml_service()
         leads = ml_service.get_leads_by_temperature(temperature, limit)
-        
+
         # Clean up MongoDB ObjectIds
         for lead in leads:
             if '_id' in lead:
                 lead['_id'] = str(lead['_id'])
-        
+
         return {
             "success": True,
             "temperature": temperature,
             "count": len(leads),
             "leads": leads
         }
-        
+
     except Exception as e:
         logging.error(f"Error fetching leads by temperature: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -821,12 +821,12 @@ async def get_prediction_statistics():
     try:
         ml_service = get_ml_service()
         stats = ml_service.get_prediction_stats()
-        
+
         return {
             "success": True,
             "stats": stats
         }
-        
+
     except Exception as e:
         logging.error(f"Error getting stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -870,37 +870,44 @@ async def batch_predict_leads(
         def process_batch():
             ml_service = get_ml_service()
             ml_service.batch_predict_leads(limit)
-        
+
         background_tasks.add_task(process_batch)
-        
+
         return {
             "success": True,
             "message": f"Batch processing of up to {limit} leads started",
             "status": "processing"
         }
-        
+
     except Exception as e:
         logging.error(f"Error starting batch process: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# [OLD] Original endpoint used Form fields — kept for reference
+# @app.post("/ai-insights/generate", response_model=AIInsightsGenerateResponse, summary="Generate AI Sales Insights")
+# async def generate_ai_insights(
+#     source_type: str = Form(...),
+#     conversation_text: Optional[str] = Form(None),
+#     file: Optional[UploadFile] = File(None),
+# ):
+#     """..."""
+
+# [NEW] Accept JSON body instead of Form — Express sends JSON, not multipart
 @app.post("/ai-insights/generate", response_model=AIInsightsGenerateResponse, summary="Generate AI Sales Insights")
-async def generate_ai_insights(
-    source_type: str = Form(...),
-    conversation_text: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
-):
+async def generate_ai_insights(payload: Dict[str, Any]):
     """Generate structured AI sales insights from transcript/chat/notes and store in MongoDB."""
     try:
-        file_name = file.filename if file else None
-        file_bytes = await file.read() if file else None
+        source_type = payload.get("source_type", "lead_data")
+        conversation_text = payload.get("conversation_text", None)
+        file = None  # File upload not supported via JSON — use Form endpoint if needed
 
         service = get_ai_insights_service()
         result = service.generate_and_store(
             source_type=source_type,
             conversation_text=conversation_text,
-            file_name=file_name,
-            file_bytes=file_bytes,
+            file_name=None,
+            file_bytes=None,
         )
 
         conversation_intelligence_stored = False
@@ -1076,7 +1083,7 @@ async def get_hot_leads(limit: int = Query(10, ge=1, le=50)):
     """Convenience endpoint to get hot leads."""
     return await get_leads_by_temperature("Hot", limit)
 
-@app.get("/leads/warm", summary="Get Warm Leads") 
+@app.get("/leads/warm", summary="Get Warm Leads")
 async def get_warm_leads(limit: int = Query(10, ge=1, le=50)):
     """Convenience endpoint to get warm leads."""
     return await get_leads_by_temperature("Warm", limit)
@@ -1093,23 +1100,23 @@ async def get_all_leads(limit: int = Query(50, ge=1, le=200)):
         logging.info(f"[API] Fetching leads with limit={limit}")
         ml_service = get_ml_service()
         leads = ml_service.get_all_leads_with_predictions(limit)
-        
+
         logging.info(f"[API] ML service returned {len(leads)} leads")
-        
+
         # Clean up MongoDB ObjectIds for JSON serialization
         for lead in leads:
             if '_id' in lead and isinstance(lead['_id'], ObjectId):
                 lead['_id'] = str(lead['_id'])
-        
+
         response = {
             "success": True,
             "count": len(leads),
             "leads": leads
         }
-        
+
         logging.info(f"[API] Returning {len(leads)} leads to frontend")
         return response
-        
+
     except Exception as e:
         logging.error(f"[ERROR] Failed to fetch leads: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch leads: {str(e)}")
@@ -1121,7 +1128,7 @@ async def get_model_info():
         ml_service = get_ml_service()
         if not hasattr(ml_service, 'temperature_model') or not ml_service.temperature_model:
             return {"success": False, "message": "Model not loaded"}
-        
+
         metadata = getattr(ml_service, 'model_metadata', {})
         enhancer = getattr(ml_service, 'prediction_enhancer', None)
         enhancer_config = getattr(enhancer, 'config', None)
@@ -1139,7 +1146,7 @@ async def get_model_info():
             calibration_enabled = bool(getattr(enhancer_config, 'calibration_enabled', False))
             rule_engine_enabled = bool(getattr(enhancer_config, 'rule_engine_enabled', False))
             llm_fallback_enabled = bool(getattr(enhancer_config, 'llm_fallback_enabled', False))
-        
+
         return {
             "success": True,
             "model_info": {
@@ -1161,7 +1168,7 @@ async def get_model_info():
                 "loaded": True
             }
         }
-        
+
     except Exception as e:
         logging.error(f"Error getting model info: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1173,21 +1180,21 @@ async def signup_user(user_data: UserSignupRequest):
     """Register a new user."""
     try:
         auth_service = get_auth_service()
-        
+
         # Convert Pydantic model - try real auth first, then dev
         try:
             from services.auth_service import UserSignup
         except:
             from services.auth_service_dev import UserSignup
-        
+
         signup_payload = user_data.model_dump()
         signup_payload["role"] = "admin"
         signup_data = UserSignup(**signup_payload)
         result = auth_service.register_user(signup_data)
-        
+
         if 'error' in result:
             raise HTTPException(status_code=400, detail=result['error'])
-        
+
         return {
             "success": True,
             "message": "User registered successfully",
@@ -1205,19 +1212,19 @@ async def login_user(login_data: UserLoginRequest):
     """Login a user."""
     try:
         auth_service = get_auth_service()
-        
+
         # Convert Pydantic model - try real auth first, then dev
         try:
             from services.auth_service import UserLogin
         except:
             from services.auth_service_dev import UserLogin
-        
+
         login_request = UserLogin(**login_data.model_dump())
         result = auth_service.login_user(login_request)
-        
+
         if 'error' in result:
             raise HTTPException(status_code=401, detail=result['error'])
-        
+
         return {
             "success": True,
             "message": "Login successful",
@@ -1259,11 +1266,11 @@ async def general_exception_handler(request: Request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     print("🚀 Starting AI-Powered CRM ML Prediction API...")
     print("📊 ML Model: Lead Temperature Prediction")
     print("🔗 API Documentation: http://localhost:8000/docs")
-    
+
     uvicorn.run(
         app,
         host="0.0.0.0",

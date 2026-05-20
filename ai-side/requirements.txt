@@ -19,7 +19,7 @@ python-jose[cryptography]
 flask
 pymongo
 
-# ML Dependencies  
+# ML Dependencies
 scikit-learn
 pandas
 joblib
@@ -42,3 +42,8 @@ beautifulsoup4
 # Google Sheets integration
 gspread
 oauth2client
+
+xgboost
+scikit-learn
+joblib
+numpy

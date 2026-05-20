@@ -118,9 +118,15 @@ exports.getLeadInsights = async (req, res) => {
         .json({ success: false, message: "Lead not found" });
     }
 
-    // Call AI Service to generate insights for this lead
+    // [OLD] Original call — kept for reference
+    // const insights = await aiService.generateInsights(req.params.id, {
+    //   leadData: lead,
+    // });
+
+    // [NEW] Added source_type so FastAPI's /ai-insights/generate receives it in JSON body
     const insights = await aiService.generateInsights(req.params.id, {
-      leadData: lead,
+      source_type: "meeting_notes",
+      conversation_text: JSON.stringify(lead),
     });
 
     if (!insights || !insights.success) {

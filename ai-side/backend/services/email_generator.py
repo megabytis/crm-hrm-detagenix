@@ -150,7 +150,7 @@ _load_env_files()
 LLM_PROVIDER, LLM_API_KEY = _resolve_provider_and_key()
 LLM_DEFAULT_MODEL = {
     "openai": "gpt-4o-mini",
-    "groq": "llama3-8b-8192",
+    "groq": "llama-3.1-8b-instant",
     "anthropic": "claude-3-haiku-20240307",
     "gemini": "gemini-3.1-flash-lite-preview",
 }
@@ -302,13 +302,14 @@ async def _call_groq(prompt: str) -> str:
                 "Content-Type": "application/json",
             },
             json={
-                "model": LLM_MODEL or "llama3-8b-8192",
+                "model": LLM_MODEL or "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.7,
                 "max_tokens": 600,
             }
         )
     if response.status_code != 200:
+        logging.error(f"[EmailGen] Groq API error {response.status_code}: {response.text}")
         raise HTTPException(status_code=502, detail="Groq API call failed")
     return response.json()["choices"][0]["message"]["content"].strip()
 
