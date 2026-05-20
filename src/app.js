@@ -24,6 +24,7 @@ const projectRoutes = require("./modules/project/project.routes");
 const requestRoutes = require("./modules/request/request.routes");
 const onboardingRoutes = require("./modules/onboarding/onboarding.routes");
 const salaryRoutes = require("./modules/salaryStructure/salaryStructure.routes");
+const aiAdminRoutes = require("./modules/ai-admin/aiAdmin.routes");
 const app = express();
 
 // ========================================
@@ -44,6 +45,7 @@ app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/admin/ai", aiAdminRoutes);
 
 // ========================================
 // 📊 DASHBOARD
@@ -75,6 +77,7 @@ app.use("/api/hrm/profile", profileRoutes);
 app.use("/api/hrm/request", requestRoutes);
 app.use("/api/hrm/onboarding", onboardingRoutes);
 app.use("/api/hrm/salary-structure", salaryRoutes);
+app.use("/api/hrm/ai", hrAiRoutes);
 
 // ========================================
 // 🛑 HEALTH CHECK (Optional but Recommended)

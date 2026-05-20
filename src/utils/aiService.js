@@ -211,6 +211,33 @@ class AiService {
       return null;
     }
   }
+  
+
+  async trainConversionModel(limit = 5000, minRows = 40) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/lead-scoring/conversion/train", null, {
+        params: { limit, min_rows: minRows }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("AI Conversion Model Training Failed:", error.message);
+      return null;
+    }
+  }
+
+  async runBatchPrediction(limit = 50) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/batch-predict", null, {
+        params: { limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("AI Batch Prediction Failed:", error.message);
+      return null;
+    }
+  }
 }
 
 module.exports = new AiService();
