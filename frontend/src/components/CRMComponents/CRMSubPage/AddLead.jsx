@@ -253,9 +253,12 @@ const AddLead = () => {
                     value={formData.status}
                     onChange={handleChange}
                   >
+                    {/* Aligned frontend status options with backend Lead.js schema requirements */}
                     <option value="New">New</option>
                     <option value="Contacted">Contacted</option>
                     <option value="Qualified">Qualified</option>
+                    <option value="Proposal Sent">Proposal Sent</option>
+                    <option value="Won">Won</option>
                     <option value="Lost">Lost</option>
                   </select>
                 </div>

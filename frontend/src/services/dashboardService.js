@@ -6,7 +6,17 @@ export const dashboardService = {
     return await api.get('/dashboard');
   },
   
-  getManagerDashboard: async () => {
-    return await api.get('/manager/dashboard');
+  // Manager Dashboard APIs
+  getManagerDashboard: async (params) => {
+    return await api.get('/manager/dashboard', { params });
+  },
+  getManagerGraph: async (params) => {
+    return await api.get('/manager/dashboard/graph', { params });
+  },
+  getProductivity: async () => {
+    return await api.get('/manager/dashboard/productivity');
+  },
+  getRiskAnalysis: async () => {
+    return await api.get('/manager/dashboard/risk');
   },
 };

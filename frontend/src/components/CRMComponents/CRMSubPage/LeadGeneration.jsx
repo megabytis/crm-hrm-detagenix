@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import './LeadGeneration.css';
 import DashboardLayout from '../../DashboardComponents/DashboardLayout';
+import { crmService } from '../../../services/crmService'; // Import CRM API services
 import { 
   FaSearch, 
   FaFilter, 
@@ -15,6 +16,7 @@ const LeadGeneration = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [leads, setLeads] = useState([]);
+  const [error, setError] = useState(null); // Added state for API error messages
   const [formData, setFormData] = useState({
     query: '',
     maxResults: 10,
@@ -81,14 +83,42 @@ const LeadGeneration = () => {
     setFormData(prev => ({ ...prev, [id]: value }));
   };
 
-  const handleGenerateLeads = (e) => {
+  const handleGenerateLeads = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API Call
-    setTimeout(() => {
+    setError(null);
+    try {
+      // Connect to CRM Lead Generation Route: POST /api/crm/lead-generation/search-query
+      const response = await crmService.leadGeneration.generateLeads(
+        formData.query,
+        formData.maxResults
+      );
+
+      if (response && response.success) {
+        const rawLeads = response.leads || response.data?.leads || [];
+        // Map backend schema to existing UI properties smoothly to maintain aesthetic layout
+        const formatted = rawLeads.map((item, idx) => ({
+          id: idx + 1,
+          name: item.business_name || 'Unknown',
+          industry: item.industry || 'Unknown',
+          websiteStatus: item.website_present === 'Yes' ? 'Active Website' : item.website_present === 'No' ? 'No Website' : 'Unknown',
+          email: item.contact_email || 'Unknown',
+          phone: item.contact_phone || 'Unknown',
+          score: item.confidence_score || 0,
+          type: item.lead_category ? (item.lead_category.charAt(0).toUpperCase() + item.lead_category.slice(1).toLowerCase()) : 'Cold'
+        }));
+        setLeads(formatted);
+      } else {
+        throw new Error(response.message || "Failed to generate qualified leads.");
+      }
+    } catch (err) {
+      console.error("AI Lead Gen Error:", err);
+      // Soft user feedback banner & premium fallback to local simulation
+      setError("AI Search service unavailable (MongoDB offline or SerpApi limits reached). Showing local simulation data.");
       setLeads(mockLeadsData);
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   const loadSampleQuery = () => {
@@ -126,6 +156,27 @@ const LeadGeneration = () => {
         </div>
 
         <div className="lead-generation-main-content">
+          {/* Dynamic Warning/Alert banner when backend services are offline */}
+          {error && (
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                background: "#fffbeb",
+                color: "#b45309",
+                border: "1px solid #fde68a",
+                padding: "14px 18px",
+                borderRadius: "12px",
+                marginBottom: "20px",
+                fontWeight: "500",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px"
+              }}
+            >
+              ⚠️ {error}
+            </div>
+          )}
+
           {/* LEFT CARD: Discovery Form */}
           <div className="discovery-form-card">
             <h3 className="card-title">Lead Discovery Query</h3>

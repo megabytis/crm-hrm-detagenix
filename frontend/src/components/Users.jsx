@@ -23,9 +23,13 @@ const Users = () => {
     password: "",
     role: "",
     designation: "",
-    managerType: "", // 👈 NEW
+    managerType: "",
     techStack: "",
-    teamMembers: [], // 👈 NEW
+    teamMembers: [],
+    // Aligned with backend schema
+    phone: "",
+    department: "",
+    reportingTo: "",
   });
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -151,6 +155,9 @@ const Users = () => {
         role: "",
         designation: "",
         techStack: "",
+        phone: "",
+        department: "",
+        reportingTo: "",
       });
 
       setShowModal(false);
@@ -180,6 +187,9 @@ const Users = () => {
       role: user.role,
       designation: user.designation || "",
       techStack: user.techStack || "",
+      phone: user.phone || "",
+      department: user.department || "",
+      reportingTo: user.reportingTo || "",
     });
     setEditingUserId(user._id);
     setIsEditing(true);
@@ -220,6 +230,9 @@ const Users = () => {
         role: "",
         designation: "",
         techStack: "",
+        phone: "",
+        department: "",
+        reportingTo: "",
       });
       setEditingUserId(null);
       setIsEditing(false);
@@ -984,6 +997,60 @@ const Users = () => {
                   <option value="Developer">Developer</option>
                   <option value="Intern">Intern</option>
                 </select>
+
+                <input
+                  type="text"
+                  name="phone"
+                  placeholder="Phone Number"
+                  value={newUser.phone || ""}
+                  onChange={handleInputChange}
+                  style={{
+                    width: "100%",
+                    marginBottom: "12px",
+                    padding: "10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  }}
+                />
+
+                <select
+                  name="department"
+                  value={newUser.department || ""}
+                  onChange={handleInputChange}
+                  style={{
+                    width: "100%",
+                    marginBottom: "12px",
+                    padding: "10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    backgroundColor: "#ffffff",
+                  }}
+                >
+                  <option value="">Select Department</option>
+                  <option value="IT">IT</option>
+                  <option value="HR">HR</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Finance">Finance</option>
+                </select>
+
+                <input
+                  type="text"
+                  name="reportingTo"
+                  placeholder="Reporting To (Manager User ID)"
+                  value={newUser.reportingTo || ""}
+                  onChange={handleInputChange}
+                  style={{
+                    width: "100%",
+                    marginBottom: "12px",
+                    padding: "10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  }}
+                />
               
 
                 <div

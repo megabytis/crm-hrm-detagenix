@@ -105,4 +105,126 @@ export const crmService = {
       return await api.delete(`/crm/activities/${id}`);
     },
   },
+
+  /*
+   * Added by Pairing AI: Reports Module Integration
+   * Integrates the Sales Forecasting & Revenue Pipeline report APIs with the backend.
+   */
+  reports: {
+    getSalesForecast: async (months = 6) => {
+      try {
+        const response = await api.get(`/crm/reports/sales-forecast?months=${months}`);
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Fetch sales forecast error:', error);
+        throw error;
+      }
+    }
+  },
+
+  /*
+   * Added by Pairing AI: CRM Chatbot Module Integration
+   * Connects the Natural Language Gemini Assistant Chat with the backend router.
+   */
+  chatbot: {
+    chat: async (userInput, userContext = {}) => {
+      try {
+        const response = await api.post('/crm/chatbot/chat', {
+          user_input: userInput,
+          user_context: userContext
+        });
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Chatbot error:', error);
+        throw error;
+      }
+    }
+  },
+
+  leadGeneration: {
+    generateLeads: async (query, maxResults = 10, persist = true) => {
+      try {
+        const response = await api.post('/crm/lead-generation/search-query', {
+          query,
+          max_results: maxResults,
+          persist
+        });
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Lead Generation error:', error);
+        throw error;
+      }
+    }
+  },
+
+  /*
+   * Added by Pairing AI: Lead Conversion & Scoring retrainer
+   * Links real-time conversion forecast and retraining to backend AI models.
+   */
+  leadConversion: {
+    predict: async (data) => {
+      try {
+        const response = await api.post('/crm/engagement/conversion/predict', data);
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Predict Conversion error:', error);
+        throw error;
+      }
+    },
+    train: async (limit = 100, minRows = 40) => {
+      try {
+        const response = await api.post('/crm/engagement/conversion/train', { limit, minRows });
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Train Conversion Model error:', error);
+        throw error;
+      }
+    }
+  },
+
+  /*
+   * Added by Pairing AI: Client Lifetime Value (LTV) Forecast Integration
+   * Integrates the CLV, upsell potential, and cross-sell window indicators with the backend.
+   */
+  clientLtv: {
+    predict: async (data) => {
+      try {
+        const response = await api.post('/crm/engagement/clv/predict', data);
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Predict Client LTV error:', error);
+        throw error;
+      }
+    }
+  },
+
+  followup: {
+    optimize: async (data) => {
+      try {
+        const response = await api.post('/crm/engagement/followup/optimize', data);
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Optimize follow-up error:', error);
+        throw error;
+      }
+    }
+  },
+
+  /*
+   * Added by Pairing AI: Conversation Intelligence Analyzers
+   * Analyzes chat, email, or meeting logs to assess lead interest and deal risk.
+   */
+  conversationIntelligence: {
+    analyze: async (data) => {
+      try {
+        const response = await api.post('/crm/conversation-intelligence/analyze', data);
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Conversation Intelligence error:', error);
+        throw error;
+      }
+    }
+  }
 };
+
+

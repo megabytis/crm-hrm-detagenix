@@ -141,4 +141,6 @@ vite.config.ts.timestamp-*
 # pyhton 
 
 __pycache__
-*.pyc
+*.pycml_model/
+
+ml_model/

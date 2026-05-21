@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import DashboardLayout from "../DashboardComponents/DashboardLayout";
+import { dashboardService } from "../../services/dashboardService";
 import {
   LineChart,
   Line,
@@ -14,41 +15,95 @@ import {
 } from "recharts";
 
 const ManagerDashboard = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [attendanceChart, setAttendanceChart] = useState([]);
+  const [earningsChart, setEarningsChart] = useState([]); // Placeholder for earnings since we don't have revenue route yet
 
-  // Attendance Data
-  const attendanceData = [
-    { day: "Mon", present: 70, absent: 30 },
-    { day: "Tue", present: 80, absent: 20 },
-    { day: "Wed", present: 75, absent: 25 },
-    { day: "Thu", present: 85, absent: 15 },
-    { day: "Fri", present: 72, absent: 28 },
-    { day: "Sat", present: 78, absent: 22 },
-    { day: "Sun", present: 74, absent: 26 }
-  ];
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true);
+        // Fire parallel requests
+        const [dashRes, graphRes] = await Promise.all([
+          dashboardService.getManagerDashboard(),
+          dashboardService.getManagerGraph()
+        ]);
 
-  // Earnings Data
-  const earningsData = [
-    { day: "Mon", earning: 40 },
-    { day: "Tue", earning: 65 },
-    { day: "Wed", earning: 60 },
-    { day: "Thu", earning: 70 },
-    { day: "Fri", earning: 62 }
-  ];
+        if (dashRes.success) {
+          setDashboardData(dashRes.data);
+        }
+
+        if (graphRes.success && graphRes.data) {
+          // Process graph data for Recharts: { date: "May 1", present: X, absent: Y }
+          const groupedByDate = {};
+          
+          graphRes.data.forEach(entry => {
+            const dateStr = new Date(entry._id.date).toLocaleDateString('en-US', { weekday: 'short' });
+            if (!groupedByDate[dateStr]) {
+              groupedByDate[dateStr] = { day: dateStr, present: 0, absent: 0, leave: 0 };
+            }
+            if (entry._id.status === 'present') groupedByDate[dateStr].present += entry.count;
+            if (entry._id.status === 'absent') groupedByDate[dateStr].absent += entry.count;
+            if (entry._id.status === 'leave') groupedByDate[dateStr].leave += entry.count;
+          });
+
+          setAttendanceChart(Object.values(groupedByDate));
+        }
+
+        // Temporary Earnings Placeholder until revenue module is ready
+        setEarningsChart([
+          { day: "Mon", earning: 40 },
+          { day: "Tue", earning: 65 },
+          { day: "Wed", earning: 60 },
+          { day: "Thu", earning: 70 },
+          { day: "Fri", earning: 62 }
+        ]);
+
+      } catch (err) {
+        console.error("Failed to load manager dashboard:", err);
+        setError("Failed to load dashboard data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboard();
+  }, []);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div style={{ padding: "40px", textAlign: "center" }}>Loading Dashboard Data...</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div style={{ padding: "40px", textAlign: "center", color: "red" }}>{error}</div>
+      </DashboardLayout>
+    );
+  }
+
+  const { teamSummary, taskSummary, pendingApprovals, productivity, riskLevel } = dashboardData;
 
   return (
     <DashboardLayout>
       <div style={{ padding: "20px", background: "#f5f7fa", minHeight: "100vh" }}>
         
-        <h2 style={{ marginBottom: "20px", fontWeight: "600" }}>Dashboard</h2>
+        <h2 style={{ marginBottom: "20px", fontWeight: "600" }}>Manager Dashboard</h2>
 
         {/* Top Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "20px" }}>
           
           {[
-            { title: "Team Members", value: "12", sub: "+8% last month" },
-            { title: "Present/Absent Today", value: "8 / 12", sub: "+5.2% attendance today" },
-            { title: "Pending Approvals", value: "5", sub: "-12% last week" },
-            { title: "Team Leads / Tasks", value: "15", sub: "+6.4% task increase" }
+            { title: "Team Members", value: teamSummary?.totalMembers || 0, sub: "Total Active" },
+            { title: "Present / Absent Today", value: `${teamSummary?.present || 0} / ${teamSummary?.absent || 0}`, sub: `${teamSummary?.leave || 0} on leave` },
+            { title: "Pending Approvals", value: pendingApprovals || 0, sub: "Leave & Expenses" },
+            { title: "Completed Tasks", value: taskSummary?.completed || 0, sub: `${taskSummary?.overdueTasks || 0} overdue` }
           ].map((card, index) => (
             <div key={index} style={{
               background: "#fff",
@@ -77,7 +132,7 @@ const ManagerDashboard = () => {
 
             <div style={{ height: "250px", marginTop: "15px" }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={attendanceData}>
+                <LineChart data={attendanceChart.length ? attendanceChart : [{day: 'Mon', present: 0, absent: 0}]}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis />
@@ -101,7 +156,7 @@ const ManagerDashboard = () => {
 
             <div style={{ height: "250px", marginTop: "15px" }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={earningsData}>
+                <AreaChart data={earningsChart}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis />
@@ -129,49 +184,25 @@ const ManagerDashboard = () => {
             borderRadius: "12px",
             boxShadow: "0 2px 10px rgba(0,0,0,0.05)"
           }}>
-            <h4 style={{ marginBottom: "15px" }}>Team Leads & Tasks</h4>
+            <h4 style={{ marginBottom: "15px" }}>Team Tasks Outline</h4>
 
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", fontSize: "14px", color: "#777" }}>
-                  <th>Lead Name</th>
-                  <th>Task</th>
-                  <th>Progress</th>
-                  <th>Status</th>
+                  <th>Category</th>
+                  <th>Count</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { name: "Rahul Patidar", task: "UI Review", progress: "65%", status: "Completed" },
-                  { name: "Neha Shah", task: "API Integration", progress: "20%", status: "In Progress" },
-                  { name: "Pooja Patel", task: "Testing", progress: "100%", status: "Pending" },
-                  { name: "Riya Sharma", task: "Bug Fixing", progress: "45%", status: "Pending" }
+                  { name: "Completed", count: taskSummary?.completed || 0, status: "Completed" },
+                  { name: "In Progress", count: taskSummary?.inProgress || 0, status: "In Progress" },
+                  { name: "Pending", count: taskSummary?.pending || 0, status: "Pending" },
+                  { name: "Overdue", count: taskSummary?.overdueTasks || 0, status: "Overdue" }
                 ].map((row, i) => (
                   <tr key={i} style={{ borderTop: "1px solid #eee", fontSize: "14px" }}>
                     <td style={{ padding: "10px 0" }}>{row.name}</td>
-                    <td>{row.task}</td>
-                    <td>{row.progress}</td>
-                    <td>
-                      <span style={{
-                        padding: "5px 10px",
-                        borderRadius: "20px",
-                        fontSize: "12px",
-                        background:
-                          row.status === "Completed"
-                            ? "#e8f5e9"
-                            : row.status === "In Progress"
-                            ? "#e3f2fd"
-                            : "#fff3e0",
-                        color:
-                          row.status === "Completed"
-                            ? "#2e7d32"
-                            : row.status === "In Progress"
-                            ? "#1565c0"
-                            : "#ef6c00"
-                      }}>
-                        {row.status}
-                      </span>
-                    </td>
+                    <td>{row.count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -184,31 +215,33 @@ const ManagerDashboard = () => {
             borderRadius: "12px",
             boxShadow: "0 2px 10px rgba(0,0,0,0.05)"
           }}>
-            <h4>Pending Approvals</h4>
-            <p style={{ color: "#777" }}>Leave, Expense & Shift requests pending...</p>
+            <h4>Approvals Action Required</h4>
+            <p style={{ color: "#777", marginTop: "10px" }}>
+              You have {pendingApprovals || 0} pending request(s) awaiting your decision.
+            </p>
           </div>
 
         </div>
 
-        {/* Alerts */}
+        {/* AI Alerts */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginTop: "20px" }}>
           
           <div style={{
-            background: "#fff8e1",
+            background: productivity?.level === "Low" ? "#fdecea" : "#e8f5e9",
             padding: "15px",
             borderRadius: "10px"
           }}>
-            <h4>Low Productivity Alert</h4>
-            <p style={{ fontSize: "14px" }}>Priya's performance is below target.</p>
+            <h4>AI Productivity Insights</h4>
+            <p style={{ fontSize: "14px" }}>Productivity Level: {productivity?.level || "Unknown"} (Score: {productivity?.score || 0})</p>
           </div>
 
           <div style={{
-            background: "#fdecea",
+            background: riskLevel !== "Low Risk" ? "#fdecea" : "#e8f5e9",
             padding: "15px",
             borderRadius: "10px"
           }}>
-            <h4>Team Risk Alert</h4>
-            <p style={{ fontSize: "14px" }}>High churn risk detected in sales team!</p>
+            <h4>AI Risk Alert</h4>
+            <p style={{ fontSize: "14px" }}>{riskLevel || "No immediate risks detected."}</p>
           </div>
 
         </div>

@@ -780,11 +780,11 @@ const SalesActivities = () => {
                   backgroundColor: "#ffffff",
                 }}
               >
+                {/* Aligned frontend activity types strictly with backend Activity schema */}
                 <option value="Call">Call</option>
-                <option value="Email">Email</option>
-                <option value="WhatsApp">WhatsApp</option>
                 <option value="Meeting">Meeting</option>
-                <option value="Other">Other</option>
+                <option value="Email">Email</option>
+                <option value="Follow-up">Follow-up</option>
               </select>
             </div>
 
@@ -855,20 +855,22 @@ const SalesActivities = () => {
                   fontWeight: "500",
                 }}
               >
-                IP Address (Optional)
+                IP Address (Auto-detected by server)
               </label>
               <input
                 type="text"
                 name="ipAddress"
-                value={formData.ipAddress}
-                onChange={handleInputChange}
-                placeholder="Enter IP address"
+                value="Captured automatically by backend"
+                readOnly
+                disabled
                 style={{
                   width: "100%",
                   padding: "10px",
                   border: "1px solid #d1d5db",
                   borderRadius: "6px",
                   fontSize: "14px",
+                  backgroundColor: "#f3f4f6", // visually disabled
+                  color: "#9ca3af"
                 }}
               />
             </div>

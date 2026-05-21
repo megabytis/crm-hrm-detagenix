@@ -744,6 +744,32 @@ const CustomerManagement = () => {
                     <option value="lost">Lost</option>
                   </select>
                 </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "4px",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Assigned To (User ID)
+                  </label>
+                  <input
+                    type="text"
+                    name="assignedTo"
+                    value={formData.assignedTo || ""}
+                    onChange={handleInputChange}
+                    placeholder="Enter Employee ID (Optional)"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
               </div>
 
               <div
@@ -962,6 +988,32 @@ const CustomerManagement = () => {
                     <option value="qualified">Qualified</option>
                     <option value="lost">Lost</option>
                   </select>
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "4px",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Assigned To (User ID)
+                  </label>
+                  <input
+                    type="text"
+                    name="assignedTo"
+                    value={formData.assignedTo || ""}
+                    onChange={handleInputChange}
+                    placeholder="Enter Employee ID (Optional)"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                    }}
+                  />
                 </div>
               </div>
 

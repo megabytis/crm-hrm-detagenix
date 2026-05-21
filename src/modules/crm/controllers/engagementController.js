@@ -72,3 +72,82 @@ exports.optimizeFollowupStrategy = async (req, res) => {
     });
   }
 };
+
+/*
+ * Added by Pairing AI: Lead Conversion Engine
+ * Invokes the Python RandomForest calibrated model for real-time lead conversion forecast.
+ */
+exports.predictLeadConversion = async (req, res) => {
+  try {
+    const { industry, budget, response_speed, meeting_count, email_open_rate, website_visits } = req.body;
+
+    // Validate fields to ensure proper model input
+    if (industry === undefined || budget === undefined || response_speed === undefined || meeting_count === undefined || email_open_rate === undefined || website_visits === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required prediction fields: industry, budget, response_speed, meeting_count, email_open_rate, website_visits."
+      });
+    }
+
+    const prediction = await aiService.predictConversionProbability({
+      industry,
+      budget,
+      response_speed,
+      meeting_count,
+      email_open_rate,
+      website_visits
+    });
+
+    if (!prediction) {
+      return res.status(503).json({
+        success: false,
+        message: "AI Lead Conversion prediction failed. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: prediction
+    });
+  } catch (error) {
+    console.error("Predict Lead Conversion Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during conversion prediction.",
+      error: error.message
+    });
+  }
+};
+
+/*
+ * Added by Pairing AI: Lead Conversion Retraining
+ * Triggers historical retraining of the Lead Scoring random forest classifier.
+ */
+exports.trainConversionModel = async (req, res) => {
+  try {
+    const { limit, minRows } = req.body;
+
+    const trainResult = await aiService.trainConversionModel(limit, minRows);
+
+    if (!trainResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Model training triggered unsuccessfully or AI service offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Model trained successfully",
+      data: trainResult
+    });
+  } catch (error) {
+    console.error("Train Conversion Model Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during conversion model training.",
+      error: error.message
+    });
+  }
+};
+
