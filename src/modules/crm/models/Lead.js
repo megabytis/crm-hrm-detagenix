@@ -1,34 +1,125 @@
 const mongoose = require("mongoose");
 
-const leadSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: String,
-  phone: String,
-  source: String,
-  status: {
-    type: String,
-    enum: ["New", "Contacted", "Qualified", "Lost"],
-    default: "New"
-  },
-  // Professional details for AI Prediction
-  role_position: { type: String, default: "Not Specified" },
-  highest_education: String,
-  years_of_experience: { type: Number, default: 0 },
-  skills: String,
-  location: String,
-  expected_salary: { type: Number, default: 0 },
-  
-  // Link to AI service's unique ID
-  ai_unique_id: String,
+const leadSchema = new mongoose.Schema(
+  {
+    // Basic Info
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-  // AI ML Prediction Results
-  ml_prediction: {
-    predicted_temperature: { type: String, enum: ["Hot", "Warm", "Cold", "Unknown"], default: "Unknown" },
-    confidence: Number,
-    probabilities: Object,
-    model_version: String,
-    prediction_timestamp: Date
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    location: {
+      type: String,
+      trim: true,
+    },
+
+    linkedinProfile: {
+      type: String,
+      trim: true,
+    },
+
+    // Company Info
+    companyName: {
+      type: String,
+      trim: true,
+    },
+
+    companyWebsite: {
+      type: String,
+      trim: true,
+    },
+
+    companyEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+
+    // Lead Details
+    role: {
+      type: String,
+      trim: true,
+    },
+
+    leadId: {
+      type: String,
+      unique: true,
+      trim: true,
+    },
+
+    source: {
+      type: String,
+      enum: [
+        "LinkedIn",
+        "Website",
+        "Referral",
+        "Instagram",
+        "Walk-in",
+        "Cold Call",
+        "Other",
+      ],
+      default: "Other",
+    },
+
+    requirementDetails: {
+      type: String,
+      trim: true,
+    },
+
+    status: {
+      type: String,
+      enum: [
+        "New",
+        "Contacted",
+        "Qualified",
+        "Proposal Sent",
+        "Won",
+        "Lost",
+      ],
+      default: "New",
+    },
+
+    priority: {
+      type: String,
+      enum: ["Low", "Medium", "High"],
+      default: "Medium",
+    },
+
+    // Professional details for AI Prediction
+    role_position: { type: String, default: "Not Specified" },
+    highest_education: String,
+    years_of_experience: { type: Number, default: 0 },
+    skills: String,
+    expected_salary: { type: Number, default: 0 },
+
+    // Link to AI service's unique ID
+    ai_unique_id: String,
+
+    // AI ML Prediction Results
+    ml_prediction: {
+      predicted_temperature: { type: String, enum: ["Hot", "Warm", "Cold", "Unknown"], default: "Unknown" },
+      confidence: Number,
+      probabilities: Object,
+      model_version: String,
+      prediction_timestamp: Date
+    }
+  },
+  {
+    timestamps: true,
   }
-}, { timestamps: true });
+);
 
 module.exports = mongoose.model("Lead", leadSchema);
