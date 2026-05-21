@@ -72,3 +72,59 @@
 1. **Lines 120-125**: Switched AI insights caller to pass JSON payload.
    * **Earlier**: Passed `leadData` as an object to `aiService.generateInsights`.
    * **Now**: Passes `source_type: "meeting_notes"` and stringified `conversation_text` in a JSON request.
+
+---
+
+### `frontend/src/components/CRMComponents/CRMSubPage/AddLead.jsx`
+1. **Status Dropdown**: Synced options with backend schema.
+   * **Earlier**: Missing "Proposal Sent" and "Won".
+   * **Now**: Fully matches `Lead.js` enum requirements.
+
+---
+
+### `frontend/src/components/CRMComponents/ClientLTV.jsx`
+1. **Industry Dropdown**: Synced options with Python ML service.
+   * **Earlier**: Missing "technology" category.
+   * **Now**: Added "technology" option to match model weighting.
+
+---
+
+### `frontend/src/components/CRMComponents/SalesActivities.jsx`
+1. **Activity Type Dropdown & IP Address**: Synced UI constraints.
+   * **Earlier**: Included invalid options ("WhatsApp", "Other"), missing "Follow-up", and allowed manual IP entry.
+   * **Now**: Enum locked to "Call, Meeting, Email, Follow-up" and IP input set to readOnly (backend handled).
+
+---
+
+### `frontend/src/components/CRMComponents/CustomerManagement.jsx`
+1. **AssignedTo Field**: Added missing user interface control.
+   * **Earlier**: Initialized as null with no form inputs.
+   * **Now**: Added text input for Employee ID in both Create and Edit modals.
+
+---
+
+### `frontend/src/components/Users.jsx`
+1. **User Form Inputs**: Synced with backend `user.model.js` schema.
+   * **Earlier**: Missing required `phone`, `department`, and `reportingTo` fields.
+   * **Now**: Fields added to `newUser` state block, state resets, and physical modal UI.
+
+---
+
+### `frontend/src/services/dashboardService.js`
+1. **API Endpoints**: Connected to backend Manager routes.
+   * **Earlier**: Only contained generic `getDashboard`.
+   * **Now**: Added `getManagerDashboard`, `getManagerGraph`, `getProductivity`, and `getRiskAnalysis`.
+
+---
+
+### `frontend/src/components/ManagerDashboard/ManagerDashboard.jsx`
+1. **Data Binding**: Ripped out static/fake data and hooked into live API.
+   * **Earlier**: Displayed hardcoded Recharts data and static KPI numbers.
+   * **Now**: Executes `Promise.all` via `dashboardService` on mount, parsing and injecting live attendance, productivity, and risk data into Recharts and cards.
+
+---
+
+### `.gitignore`
+1. **ML Tracking**: Ignored local ML training files.
+   * **Earlier**: Pkl files tracked.
+   * **Now**: Appended `ml_model/` to block auto-generated pipeline files.
