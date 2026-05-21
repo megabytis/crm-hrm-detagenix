@@ -1,62 +1,137 @@
-// src/modules/leads/lead.controller.js
 const Lead = require("../models/Lead");
 
+/* ================= CREATE LEAD ================= */
 
 exports.createLead = async (req, res) => {
   try {
     const lead = await Lead.create(req.body);
-    res.status(201).json({ message: "Lead created", data: lead });
+
+    res.status(201).json({
+      success: true,
+      message: "Lead created successfully",
+      data: lead,
+    });
   } catch (error) {
-    console.error("Lead creation error:", error);
-    res.status(500).json({ message: "Error creating lead", error: error.message });
+    console.error("Create Lead Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to create lead",
+      error: error.message,
+    });
   }
 };
 
+/* ================= GET ALL LEADS ================= */
+
 exports.getLeads = async (req, res) => {
   try {
-    const leads = await Lead.find();
-    res.status(200).json({ message: "All leads", data: leads });
+    const leads = await Lead.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: leads.length,
+      data: leads,
+    });
   } catch (error) {
-    console.error("Fetch leads error:", error);
-    res.status(500).json({ message: "Error fetching leads", error: error.message });
+    console.error("Get Leads Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch leads",
+      error: error.message,
+    });
   }
 };
+
+/* ================= GET SINGLE LEAD ================= */
 
 exports.getSingleLead = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id);
+
     if (!lead) {
-      return res.status(404).json({ message: "Lead not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
     }
-    res.status(200).json({ message: "Single lead", data: lead });
+
+    res.status(200).json({
+      success: true,
+      data: lead,
+    });
   } catch (error) {
-    console.error("Fetch single lead error:", error);
-    res.status(500).json({ message: "Error fetching lead", error: error.message });
+    console.error("Get Single Lead Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch lead",
+      error: error.message,
+    });
   }
 };
 
+/* ================= UPDATE LEAD ================= */
+
 exports.updateLead = async (req, res) => {
   try {
-    const lead = await Lead.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const lead = await Lead.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
     if (!lead) {
-      return res.status(404).json({ message: "Lead not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
     }
-    res.status(200).json({ message: "Lead updated", data: lead });
+
+    res.status(200).json({
+      success: true,
+      message: "Lead updated successfully",
+      data: lead,
+    });
   } catch (error) {
-    console.error("Update lead error:", error);
-    res.status(500).json({ message: "Error updating lead", error: error.message });
+    console.error("Update Lead Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update lead",
+      error: error.message,
+    });
   }
 };
+
+/* ================= DELETE LEAD ================= */
 
 exports.deleteLead = async (req, res) => {
   try {
     const lead = await Lead.findByIdAndDelete(req.params.id);
+
     if (!lead) {
-      return res.status(404).json({ message: "Lead not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
     }
-    res.status(200).json({ message: "Lead deleted" });
+
+    res.status(200).json({
+      success: true,
+      message: "Lead deleted successfully",
+    });
   } catch (error) {
-    console.error("Delete lead error:", error);
-    res.status(500).json({ message: "Error deleting lead", error: error.message });
+    console.error("Delete Lead Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete lead",
+      error: error.message,
+    });
   }
 };
