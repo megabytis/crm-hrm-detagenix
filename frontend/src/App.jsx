@@ -27,8 +27,16 @@ import EmployeeDashboard from "./components/EmployeeDashboard/EmployeeDashboard"
 import HRDashboard from "./components/HRDashboard/HRDashboard"
 import BDEDashboard from "./components/SalesDashboard/SalesDashboard";
 import UserList from "./components/UserList"
-import ProjectManagers from "./components/HRMSComponents/ProjectManagers"
-import AttendanceReview from "./components/HRMSComponents/AttendanceReview"
+import ProjectManagers from "./components/HRMSComponents/ProjectManagers";
+import AttendanceReview from "./components/HRMSComponents/AttendanceReview";
+import AddLead from "./components/CRMComponents/CRMSubPage/AddLead";
+import LeadConversion from "./components/CRMComponents/CRMSubPage/LeadConversion";
+import LeadGeneration from "./components/CRMComponents/CRMSubPage/LeadGeneration";
+import FollowUpAI from "./components/CRMComponents/FollowUpAI";
+import ClientLTV from "./components/CRMComponents/ClientLTV";
+import AIInsights from "./components/CRMComponents/AIInsights";
+import MlStats from "./components/CRMComponents/MlStats";
+import CRMChatbot from "./components/CRMComponents/CRMChatbot";
 import "./App.css";
 
 function App() {
@@ -161,6 +169,30 @@ element={
               </PrivateRoutes>
             }
           />
+            <Route
+            path="/crm/add-lead"
+            element={
+              <PrivateRoutes>
+                <AddLead />
+              </PrivateRoutes>
+            }
+          />
+          <Route
+            path="/crm/lead-conversion"
+            element={
+              <PrivateRoutes>
+                <LeadConversion />
+              </PrivateRoutes>
+            }
+          />
+          <Route
+            path="/crm/lead-generation"
+            element={
+              <PrivateRoutes>
+                <LeadGeneration />
+              </PrivateRoutes>
+            }
+          />
           <Route
             path="/sales-activities"
             element={
@@ -170,6 +202,48 @@ element={
             }
           />
           <Route
+  path="/crm/followup-ai"
+  element={
+    <PrivateRoutes>
+      <FollowUpAI />
+    </PrivateRoutes>
+  }
+/>
+<Route 
+path="/crm/ai-insights" 
+element={
+
+ <PrivateRoutes>
+      <AIInsights />
+    </PrivateRoutes>
+} 
+/>
+<Route
+  path="/crm/client-ltv"
+  element={
+    <PrivateRoutes>
+      <ClientLTV />
+    </PrivateRoutes>
+  }
+/>
+<Route
+  path="/crm/ml-stats"
+  element={
+    <PrivateRoutes>
+      <MlStats />
+    </PrivateRoutes>
+  }
+/>
+<Route 
+path="/crm/chatbot" 
+element={
+  <PrivateRoutes>
+<CRMChatbot />
+</PrivateRoutes>
+}
+ />
+          <Route
+          
             path="/sales-pipeline"
             element={
               <PrivateRoutes>

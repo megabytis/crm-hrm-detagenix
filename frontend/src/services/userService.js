@@ -59,5 +59,21 @@ export const userService = {
     console.error("Reset password error:", error);
     return { success: false };
   }
-}
+},
+uploadDocument: async (id, formData) => {
+  try {
+    const response = await api.post(
+      `/hrm/profile/upload-document/${id}`,
+      formData
+    );
+
+    return response;
+  } catch (error) {
+    console.error("Upload document error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Upload failed",
+    };
+  }
+},
 };

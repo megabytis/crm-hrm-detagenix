@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "../DashboardComponents/DashboardLayout";
 import { userService } from "../../services/userService";
 import profileImg from "../../assets/profileimg.png";
+import { FaEdit } from "react-icons/fa";
+import {  FaTrash } from "react-icons/fa";
 const EmployeeProfile = () => {
   const user = JSON.parse(localStorage.getItem("user"));
   const id = user?.id;
@@ -13,8 +15,9 @@ const EmployeeProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  // const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({});
+  const [editSection, setEditSection] = useState(null);
 
   const [showResetModal, setShowResetModal] = useState(false);
 
@@ -22,10 +25,91 @@ const EmployeeProfile = () => {
     newPassword: "",
     confirmPassword: "",
   });
+
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+
+const [documentData, setDocumentData] = useState({
+  documentType: "",
+  file: null,
+});
+
+const [uploadedDocuments, setUploadedDocuments] = useState([]);
+ 
+ const { basicInfo, attendanceSummary, payrollInfo } = profileData || {};
+useEffect(() => {
+  if (basicInfo?.documents) {
+    setUploadedDocuments(basicInfo.documents);
+  }
+}, [basicInfo]);
   // Fetch employee profile on component mount
   useEffect(() => {
     fetchEmployeeProfile();
   }, [id]);
+
+
+  const handleFileChange = (e) => {
+  setDocumentData({
+    ...documentData,
+    file: e.target.files[0],
+  });
+};
+const handleDocumentUpload = async () => {
+  console.log("Selected file:", documentData.file);
+  console.log("Document type:", documentData.documentType);
+
+  if (!documentData.documentType || !documentData.file) {
+    return alert("Please select document type and file");
+  }
+
+  const formPayload = new FormData();
+  formPayload.append("documentType", documentData.documentType);
+  formPayload.append("file", documentData.file);
+
+  // check formdata values
+  for (let pair of formPayload.entries()) {
+    console.log(pair[0], pair[1]);
+  }
+
+  try {
+    const res = await userService.uploadDocument(id, formPayload);
+
+    if (res.success) {
+      alert("Document uploaded successfully");
+      setUploadedDocuments(res.documents);
+
+      setDocumentData({
+        documentType: "",
+        file: null,
+      });
+
+      setShowDocumentModal(false);
+    }
+  } catch (error) {
+    console.log("Upload error:", error);
+    alert("Upload failed");
+  }
+};
+const handleDeleteDocument = async (index) => {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this document?"
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    const updatedDocs = uploadedDocuments.filter(
+      (_, i) => i !== index
+    );
+
+    setUploadedDocuments(updatedDocs);
+
+    // backend API later laga sakti ho if file bhi server se remove karni ho
+    alert("Document deleted successfully");
+  } catch (error) {
+    console.log(error);
+    alert("Failed to delete document");
+  }
+};
 
   const fetchEmployeeProfile = async () => {
     try {
@@ -62,16 +146,11 @@ const EmployeeProfile = () => {
       const res = await userService.updateProfile(id, formData);
 
       console.log("Response:", res);
-
-      if (res.success) {
-        setProfileData((prev) => ({
-          ...prev,
-          basicInfo: res.profile || res.data,
-        }));
-
-        setShowEditModal(false);
-        alert("Profile updated successfully!");
-      } else {
+if (res.success) {
+  await fetchEmployeeProfile();   // latest data fetch karega
+  setEditSection(null);
+  alert("Profile updated successfully!");
+} else {
         alert(res.message || "Failed to update profile");
       }
     } catch (error) {
@@ -82,27 +161,27 @@ const EmployeeProfile = () => {
     }
   };
 
-  const handleUpdateProfile = async (updatedData) => {
-    try {
-      setLoading(true);
-      const response = await userService.updateProfile(id, updatedData);
+  // const handleUpdateProfile = async (updatedData) => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await userService.updateProfile(id, updatedData);
 
-      if (res.success) {
-        setProfileData({
-          ...profileData,
-          basicInfo: res.profile || res.data,
-        });
-        setShowEditModal(false);
-      } else {
-        alert(response.message || "Failed to update profile");
-      }
-    } catch (error) {
-      console.error("Update profile error:", error);
-      alert("Failed to update profile. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     if (res.success) {
+  //       setProfileData({
+  //         ...profileData,
+  //         basicInfo: res.profile || res.data,
+  //       });
+  //       setShowEditModal(false);
+  //     } else {
+  //       alert(response.message || "Failed to update profile");
+  //     }
+  //   } catch (error) {
+  //     console.error("Update profile error:", error);
+  //     alert("Failed to update profile. Please try again.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleDeleteEmployee = async () => {
     if (
@@ -214,7 +293,7 @@ const EmployeeProfile = () => {
   }
 
   // Extract data from profile response
-  const { basicInfo, attendanceSummary, payrollInfo } = profileData || {};
+  // const { basicInfo, attendanceSummary, payrollInfo } = profileData || {};
 
   return (
     <DashboardLayout>
@@ -273,7 +352,23 @@ const EmployeeProfile = () => {
         <div style={gridContainer}>
           {/* Basic Information */}
           <div style={card}>
-            <h4 style={sectionTitle}>Basic Information</h4>
+            <div style={cardHeader}>
+  <h4 style={sectionTitle}>Basic Information</h4>
+
+  <FaEdit
+    style={editIconStyle}
+    onClick={() => {
+      setFormData({
+        name: basicInfo?.name,
+        email: basicInfo?.email,
+        phone: basicInfo?.phone,
+        department: basicInfo?.department,
+      });
+      setEditSection("basic");
+    }}
+  />
+</div>
+            {/* <h4 style={sectionTitle}>Basic Information</h4> */}
             <InfoRow label="Full Name" value={basicInfo?.name || "N/A"} />
             <InfoRow label="Email" value={basicInfo?.email || "N/A"} />
             <InfoRow label="Phone" value={basicInfo?.phone || "N/A"} />
@@ -293,7 +388,22 @@ const EmployeeProfile = () => {
 
           {/* Job Details */}
           <div style={card}>
-            <h4 style={sectionTitle}>Job & Organization Details</h4>
+            <div style={cardHeader}>
+  <h4 style={sectionTitle}>Job & Organization Details</h4>
+
+  <FaEdit
+    style={editIconStyle}
+    onClick={() => {
+      setFormData({
+        role: basicInfo?.role,
+        department: basicInfo?.department,
+        projectManager: basicInfo?.projectManager,
+      });
+      setEditSection("job");
+    }}
+  />
+</div>
+            {/* <h4 style={sectionTitle}>Job & Organization Details</h4> */}
             <InfoRow
               label="Employee ID"
               value={basicInfo?._id?.slice(-6).toUpperCase() || "N/A"}
@@ -322,52 +432,232 @@ const EmployeeProfile = () => {
           </div>
 
           {/* Attendance Summary */}
-          <div style={card}>
-            <h4 style={sectionTitle}>Attendance Summary</h4>
-            <InfoRow
-              label="Present Days"
-              value={attendanceSummary?.presentDays || 0}
-            />
-            <InfoRow
-              label="Leaves Taken"
-              value={attendanceSummary?.leavesTaken || 0}
-            />
-            <InfoRow
-              label="Attendance %"
-              value={
-                attendanceSummary
-                  ? Math.round(
-                      (attendanceSummary.presentDays /
-                        (attendanceSummary.presentDays +
-                          attendanceSummary.leavesTaken)) *
-                        100,
-                    ) || 0
-                  : 0
-              }
-            />
-          </div>
+          {/* Personal Details */}
 
+{/* Personal Details */}
+<div style={card}>
+  <div style={cardHeader}>
+    <h4 style={sectionTitle}>Personal Details</h4>
+        <FaEdit
+  style={editIconStyle}
+  onClick={() => {
+    setFormData({
+      dateOfBirth: basicInfo?.dateOfBirth || "",
+      gender: basicInfo?.gender || "",
+      maritalStatus: basicInfo?.maritalStatus || "",
+      bloodGroup: basicInfo?.bloodGroup || "",
+      currentAddress: basicInfo?.currentAddress || "",
+      permanentAddress: basicInfo?.permanentAddress || "",
+      emergencyContact: basicInfo?.emergencyContact || "",
+    });
+
+    setEditSection("personal");
+  }}
+/>
+    {/* <FaEdit
+      style={editIconStyle}
+      onClick={() => {
+        setFormData({
+          dateOfBirth: basicInfo?.dateOfBirth,
+          gender: basicInfo?.gender,
+          maritalStatus: basicInfo?.maritalStatus,
+          bloodGroup: basicInfo?.bloodGroup,
+          currentAddress: basicInfo?.currentAddress,
+          permanentAddress: basicInfo?.permanentAddress,
+          emergencyContact: basicInfo?.emergencyContact,
+        });
+
+        setEditSection("personal");
+      }}
+    /> */}
+  </div>
+
+  <InfoRow
+    label="Date of Birth"
+    value={
+      basicInfo?.dateOfBirth
+        ? new Date(basicInfo.dateOfBirth).toLocaleDateString()
+        : "N/A"
+    }
+  />
+
+  <InfoRow
+    label="Gender"
+    value={basicInfo?.gender || "N/A"}
+  />
+
+  <InfoRow
+    label="Marital Status"
+    value={basicInfo?.maritalStatus || "N/A"}
+  />
+
+  <InfoRow
+    label="Blood Group"
+    value={basicInfo?.bloodGroup || "N/A"}
+  />
+
+  <InfoRow
+    label="Current Address"
+    value={basicInfo?.currentAddress || "N/A"}
+  />
+
+  <InfoRow
+    label="Permanent Address"
+    value={basicInfo?.permanentAddress || "N/A"}
+  />
+
+  <InfoRow
+    label="Emergency Contact"
+    value={basicInfo?.emergencyContact || "N/A"}
+  />
+</div>
+              
+     {/*Bank & PF Details  */}
+     
+        <div style={card}>
+  <div style={cardHeader}>
+    <h4 style={sectionTitle}>Bank & PF Details</h4>
+
+    <FaEdit
+      style={editIconStyle}
+      onClick={() => {
+        setFormData({
+          universalAccountNumber: basicInfo?.universalAccountNumber || "",
+          pfMemberId: basicInfo?.pfMemberId || "",
+          panNumber: basicInfo?.panNumber || "",
+          aadharNumber: basicInfo?.aadharNumber || "",
+          esicNumber: basicInfo?.esicNumber || "",
+          accountHolderName: basicInfo?.accountHolderName || "",
+          accountNumber: basicInfo?.accountNumber || "",
+          ifscCode: basicInfo?.ifscCode || "",
+          bankName: basicInfo?.bankName || "",
+          branchName: basicInfo?.branchName || "",
+        });
+
+        setEditSection("bank");
+      }}
+    />
+  </div>
+
+  <InfoRow
+    label="UAN Number"
+    value={basicInfo?.universalAccountNumber || "N/A"}
+  />
+
+  <InfoRow
+    label="PF Member ID"
+    value={basicInfo?.pfMemberId || "N/A"}
+  />
+
+  <InfoRow
+    label="PAN Number"
+    value={basicInfo?.panNumber || "N/A"}
+  />
+
+  <InfoRow
+    label="Aadhar Number"
+    value={basicInfo?.aadharNumber || "N/A"}
+  />
+
+  <InfoRow
+    label="ESIC Number"
+    value={basicInfo?.esicNumber || "N/A"}
+  />
+
+  <InfoRow
+    label="Account Holder"
+    value={basicInfo?.accountHolderName || "N/A"}
+  />
+
+  <InfoRow
+    label="Account Number"
+    value={basicInfo?.accountNumber || "N/A"}
+  />
+
+  <InfoRow
+    label="IFSC Code"
+    value={basicInfo?.ifscCode || "N/A"}
+  />
+
+  <InfoRow
+    label="Bank Name"
+    value={basicInfo?.bankName || "N/A"}
+  />
+
+  <InfoRow
+    label="Branch Name"
+    value={basicInfo?.branchName || "N/A"}
+  />
+</div>
           {/* Account */}
-          <div style={card}>
-            <h4 style={sectionTitle}>Account & Access Control</h4>
-            <InfoRow
-              label="Username"
-              value={basicInfo?.email?.split("@")[0] || "N/A"}
-            />
-            <InfoRow label="Role" value={basicInfo?.role || "N/A"} />
-            <InfoRow
-              label="Status"
-              value={basicInfo?.isActive ? "Active" : "Inactive"}
-            />
-            <InfoRow
-              label="Last Updated"
-              value={
-                basicInfo?.updatedAt
-                  ? new Date(basicInfo.updatedAt).toLocaleDateString()
-                  : "N/A"
-              }
-            />
-          </div>
+          {/* Documents Card */}
+<div style={card}>
+  <div style={cardHeader}>
+    <h4 style={sectionTitle}>Documents</h4>
+
+    <button
+      style={primaryBtn}
+      onClick={() => setShowDocumentModal(true)}
+    >
+      Upload
+    </button>
+  </div>
+
+  {uploadedDocuments?.length > 0 ? (
+    uploadedDocuments.map((doc, index) => (
+      <div
+        key={index}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px",
+          borderBottom: "1px solid #eee",
+          paddingBottom: "8px",
+        }}
+      >
+        <div>
+          <p style={{ margin: 0, fontWeight: "500" }}>
+            {doc.documentType}
+          </p>
+          <small style={{ color: "#777" }}>
+            Uploaded
+          </small>
+        </div>
+
+        <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
+          {/* View */}
+          <a
+            href={`http://localhost:5000${doc.fileUrl}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: "#00bcd4",
+              textDecoration: "none",
+              fontWeight: "500"
+            }}
+          >
+            View
+          </a>
+
+          {/* Delete */}
+          <FaTrash
+            style={{
+              color: "grey",
+              cursor: "pointer",
+              fontSize: "16px"
+            }}
+            onClick={() => handleDeleteDocument(index)}
+          />
+        </div>
+      </div>
+    ))
+  ) : (
+    <p style={{ color: "#777" }}>
+      No documents uploaded yet.
+    </p>
+  )}
+</div>
         </div>
 
         {/* Bottom Buttons */}
@@ -380,84 +670,360 @@ const EmployeeProfile = () => {
           </button>
         </div>
       </div>
-      {showEditModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            background: "rgba(0,0,0,0.4)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: "25px",
-              borderRadius: "12px",
-              width: "500px",
-              maxWidth: "90%",
-            }}
-          >
-            <h3 style={{ marginBottom: "15px" }}>Edit Profile</h3>
+      {editSection && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      background: "rgba(0,0,0,0.4)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999,
+    }}
+  >
+    <div
+      style={{
+        background: "#fff",
+        padding: "25px",
+        borderRadius: "12px",
+        width: "500px",
+        maxWidth: "90%",
+      }}
+    >
+     <h3 style={{ marginBottom: "15px" }}>
+  Edit{" "}
+  {editSection === "basic"
+    ? "Basic Information"
+    : editSection === "job"
+    ? "Job Details"
+    : editSection === "personal"
+    ? "Personal Details"
+    : editSection === "bank"
+    ? "Bank & PF Details"
+    : "Account Details"}
+</h3>
 
-            <input
-              name="name"
-              value={formData.name || ""}
-              onChange={handleChange}
-              placeholder="Full Name"
-              style={inputStyle}
-            />
+      {/* Basic Info Fields */}
+      {editSection === "basic" && (
+        <>
+          <input
+            name="name"
+            value={formData.name || ""}
+            onChange={handleChange}
+            placeholder="Full Name"
+            style={inputStyle}
+          />
 
-            <input
-              name="email"
-              value={formData.email || ""}
-              onChange={handleChange}
-              placeholder="Email"
-              style={inputStyle}
-            />
+          <input
+            name="email"
+            value={formData.email || ""}
+            onChange={handleChange}
+            placeholder="Email"
+            style={inputStyle}
+          />
 
-            <input
-              name="phone"
-              value={formData.phone || ""}
-              onChange={handleChange}
-              placeholder="Phone"
-              style={inputStyle}
-            />
+          <input
+            name="phone"
+            value={formData.phone || ""}
+            onChange={handleChange}
+            placeholder="Phone"
+            style={inputStyle}
+          />
 
-            <input
-              name="department"
-              value={formData.department || ""}
-              onChange={handleChange}
-              placeholder="Department"
-              style={inputStyle}
-            />
-
-            {/* Buttons */}
-            <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
-              <button
-                onClick={handleEditSubmit}
-                style={primaryBtn}
-                disabled={loading}
-              >
-                {loading ? "Saving..." : "Save"}
-              </button>
-
-              <button
-                onClick={() => setShowEditModal(false)}
-                style={secondaryBtn}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+          <input
+            name="department"
+            value={formData.department || ""}
+            onChange={handleChange}
+            placeholder="Department"
+            style={inputStyle}
+          />
+        </>
       )}
+
+      {/* Job Details Fields */}
+      {editSection === "job" && (
+        <>
+          <input
+            name="role"
+            value={formData.role || ""}
+            onChange={handleChange}
+            placeholder="Role"
+            style={inputStyle}
+          />
+
+          <input
+            name="department"
+            value={formData.department || ""}
+            onChange={handleChange}
+            placeholder="Department"
+            style={inputStyle}
+          />
+
+          <input
+            name="projectManager"
+            value={formData.projectManager || ""}
+            onChange={handleChange}
+            placeholder="Project Manager"
+            style={inputStyle}
+          />
+        </>
+      )}
+      {editSection === "personal" && (
+  <>
+    <input
+      name="dateOfBirth"
+      type="date"
+      value={formData.dateOfBirth || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="gender"
+      value={formData.gender || ""}
+      onChange={handleChange}
+      placeholder="Gender"
+      style={inputStyle}
+    />
+
+    <input
+      name="maritalStatus"
+      value={formData.maritalStatus || ""}
+      onChange={handleChange}
+      placeholder="Marital Status"
+      style={inputStyle}
+    />
+
+    <input
+      name="bloodGroup"
+      value={formData.bloodGroup || ""}
+      onChange={handleChange}
+      placeholder="Blood Group"
+      style={inputStyle}
+    />
+
+    <input
+      name="currentAddress"
+      value={formData.currentAddress || ""}
+      onChange={handleChange}
+      placeholder="Current Address"
+      style={inputStyle}
+    />
+
+    <input
+      name="permanentAddress"
+      value={formData.permanentAddress || ""}
+      onChange={handleChange}
+      placeholder="Permanent Address"
+      style={inputStyle}
+    />
+
+    <input
+      name="emergencyContact"
+      value={formData.emergencyContact || ""}
+      onChange={handleChange}
+      placeholder="Emergency Contact"
+      style={inputStyle}
+    />
+  </>
+)}
+     {editSection === "bank" && (
+  <>
+    <input
+      name="universalAccountNumber"
+      placeholder="UAN Number"
+      value={formData.universalAccountNumber || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="pfMemberId"
+      placeholder="PF Member ID"
+      value={formData.pfMemberId || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="panNumber"
+      placeholder="PAN Number"
+      value={formData.panNumber || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="aadharNumber"
+      placeholder="Aadhar Number"
+      value={formData.aadharNumber || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="esicNumber"
+      placeholder="ESIC Number"
+      value={formData.esicNumber || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="accountHolderName"
+      placeholder="Account Holder Name"
+      value={formData.accountHolderName || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="accountNumber"
+      placeholder="Account Number"
+      value={formData.accountNumber || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="ifscCode"
+      placeholder="IFSC Code"
+      value={formData.ifscCode || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="bankName"
+      placeholder="Bank Name"
+      value={formData.bankName || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    <input
+      name="branchName"
+      placeholder="Branch Name"
+      value={formData.branchName || ""}
+      onChange={handleChange}
+      style={inputStyle}
+    />
+
+    {/* Instructions Box */}
+    <div
+      style={{
+        marginTop: "15px",
+        padding: "12px",
+        background: "#fff8e1",
+        borderRadius: "8px",
+        fontSize: "13px",
+        color: "#555",
+        border: "1px solid #facc15"
+      }}
+    >
+      <strong>Instructions:</strong>
+      <ul style={{ marginTop: "8px", paddingLeft: "20px" }}>
+        <li>Please double check your Account Number and IFSC code.</li>
+        <li>Incorrect details may lead to delay in salary processing.</li>
+        <li>
+          Upload a Cancelled Cheque or Passbook copy in the Documents tab for verification.
+        </li>
+      </ul>
+    </div>
+  </>
+)}
+      {/* Account Fields */}
+      {editSection === "account" && (
+        <>
+          <input
+            name="email"
+            value={formData.email || ""}
+            onChange={handleChange}
+            placeholder="Email"
+            style={inputStyle}
+          />
+        </>
+      )}
+
+      {/* Buttons */}
+      <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
+        <button
+          onClick={handleEditSubmit}
+          style={primaryBtn}
+          disabled={loading}
+        >
+          {loading ? "Saving..." : "Save"}
+        </button>
+
+        <button
+          onClick={() => setEditSection(null)}
+          style={secondaryBtn}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+    {showDocumentModal && (
+  <div style={overlayStyle}>
+    <div style={modalStyle}>
+      <h3>Upload Document</h3>
+
+      <select
+        value={documentData.documentType}
+        onChange={(e) =>
+          setDocumentData({
+            ...documentData,
+            documentType: e.target.value,
+          })
+        }
+        style={inputStyle}
+      >
+        <option value="">Select Type</option>
+        <option value="Aadhar Card">Aadhar Card</option>
+        <option value="PAN Card">PAN Card</option>
+        <option value="Appointment Letter">Appointment Letter</option>
+        <option value="Previous Experience Letter">
+          Previous Experience Letter
+        </option>
+        <option value="Increment Letter">Increment Letter</option>
+        <option value="Relieving Letter">Relieving Letter</option>
+        <option value="Educational Certificate">
+          Educational Certificate
+        </option>
+        <option value="Passport">Passport</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <input
+        type="file"
+        onChange={handleFileChange}
+        style={inputStyle}
+      />
+
+      <div style={{ display: "flex", gap: "10px" }}>
+        <button
+          onClick={handleDocumentUpload}
+          style={primaryBtn}
+        >
+          Upload
+        </button>
+
+        <button
+          onClick={() => setShowDocumentModal(false)}
+          style={secondaryBtn}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       {showResetModal && (
         <div style={overlayStyle}>
           <div style={modalStyle}>
@@ -634,5 +1200,17 @@ const modalStyle = {
   borderRadius: "12px",
   width: "400px",
   maxWidth: "90%",
+};
+const cardHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "15px",
+};
+
+const editIconStyle = {
+  cursor: "pointer",
+  color: "#00bcd4",
+  fontSize: "16px",
 };
 export default EmployeeProfile;

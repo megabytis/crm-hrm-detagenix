@@ -21,6 +21,7 @@ const requestRoutes = require("./modules/request/request.routes");
 const onboardingRoutes = require("./modules/onboarding/onboarding.routes");
 const salaryRoutes = require("./modules/salaryStructure/salaryStructure.routes");
 const app = express();
+const path = require("path");
 
 // ========================================
 // 🌍 GLOBAL MIDDLEWARES
@@ -28,6 +29,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ========================================
 // SWAGGER DOCS

@@ -1,4 +1,9 @@
-import { FaPhone, FaEnvelope, FaWhatsapp, FaCalendarAlt } from "react-icons/fa";
+import {
+  HiOutlinePhone,
+  HiOutlineEnvelope,
+  HiOutlineChatBubbleLeftRight,
+  HiOutlineCalendarDays,
+} from "react-icons/hi2";
 
 const SalesActivityCard = ({
   title,
@@ -6,20 +11,32 @@ const SalesActivityCard = ({
   change,
   changeType,
   icon,
-  color = "#3b82f6",
 }) => {
+
+  // single CRM theme color
+  const themeColor = "#38bdf8"; // light blue
+
   const getIcon = () => {
     switch (icon) {
       case "phone":
-        return <FaPhone size={20} color={color} />;
+        return <HiOutlinePhone size={20} color={themeColor} />;
+
       case "email":
-        return <FaEnvelope size={20} color={color} />;
+        return <HiOutlineEnvelope size={20} color={themeColor} />;
+
       case "whatsapp":
-        return <FaWhatsapp size={20} color={color} />;
+        return (
+          <HiOutlineChatBubbleLeftRight
+            size={20}
+            color={themeColor}
+          />
+        );
+
       case "calendar":
-        return <FaCalendarAlt size={20} color={color} />;
+        return <HiOutlineCalendarDays size={20} color={themeColor} />;
+
       default:
-        return <FaPhone size={20} color={color} />;
+        return <HiOutlinePhone size={20} color={themeColor} />;
     }
   };
 
@@ -50,12 +67,13 @@ const SalesActivityCard = ({
         >
           {title}
         </h3>
+
         <div
           style={{
             width: "40px",
             height: "40px",
             borderRadius: "8px",
-            backgroundColor: color + "20", // Add transparency
+            backgroundColor: "#e0f2fe", // light blue bg
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -64,6 +82,7 @@ const SalesActivityCard = ({
           {getIcon()}
         </div>
       </div>
+
       <p
         style={{
           margin: 0,
@@ -74,6 +93,7 @@ const SalesActivityCard = ({
       >
         {value}
       </p>
+
       <p
         style={{
           margin: "8px 0 0 0",
