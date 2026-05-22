@@ -41,6 +41,30 @@ const LeadConversion = () => {
     websiteVisits: ''
   });
 
+  // PAIRING AI: Injected states to store live CRM leads query results for calculating the conversion dashboard aggregates
+  const [dbLeads, setDbLeads] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  // PAIRING AI: Fetch all lead documents to calculate total count, conversion ratios, and pipeline ratios dynamically in real-time
+  React.useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const response = await crmService.leads.getAll();
+        if (response) {
+          const leadsArray = Array.isArray(response) 
+            ? response 
+            : (response.data && Array.isArray(response.data) ? response.data : []);
+          setDbLeads(leadsArray);
+        }
+      } catch (err) {
+        console.error("Error fetching leads for conversion stats:", err);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    fetchLeads();
+  }, []);
+
   const handleTrainingChange = (e) => {
     const { id, value } = e.target;
     setTrainingData(prev => ({ ...prev, [id]: value }));
@@ -94,7 +118,7 @@ const LeadConversion = () => {
       const response = await crmService.leadConversion.predict(payload);
 
       if (response && response.success) {
-        setPredictionResult(response.data);
+        setPredictionResult(response.data.result || response.data);
         setSuccess("Prediction generated successfully!");
       } else {
         throw new Error(response.message || "Failed to predict conversion.");
@@ -123,11 +147,21 @@ const LeadConversion = () => {
     }
   };
 
+  // PAIRING AI: Dynamically calculate aggregate pipeline variables directly from live MongoDB lead records instead of hardcoded mock data
+  const totalLeadsCount = dbLeads.length;
+  const convertedLeadsCount = dbLeads.filter(lead => lead.status === 'Won').length;
+  const lostLeadsCount = dbLeads.filter(lead => lead.status === 'Lost').length;
+  const pendingLeadsCount = totalLeadsCount - convertedLeadsCount - lostLeadsCount;
+  const conversionRateVal = totalLeadsCount > 0 
+    ? ((convertedLeadsCount / totalLeadsCount) * 100).toFixed(1) 
+    : '0.0';
+
+  // PAIRING AI: Constructed live metrics dashboard cards showing real database counts, won rates, and funnels
   const metrics = [
-    { title: 'Total Leads', value: '1,284', icon: '👥', color: '#dbeafe', textColor: '#3b82f6', trend: '+12.5%', trendUp: true },
-    { title: 'Converted Leads', value: '452', icon: '✅', color: '#dcfce7', textColor: '#22c55e', trend: '+8.2%', trendUp: true },
-    { title: 'Pending Leads', value: '832', icon: '⏳', color: '#fef3c7', textColor: '#f59e0b', trend: '-2.4%', trendUp: false },
-    { title: 'Conversion Rate', value: '35.2%', icon: '📈', color: '#fce7f3', textColor: '#ec4899', trend: '+4.1%', trendUp: true },
+    { title: 'Total Leads', value: statsLoading ? '...' : totalLeadsCount.toLocaleString(), icon: '👥', color: '#dbeafe', textColor: '#3b82f6', trend: 'Active CRM database', trendUp: true },
+    { title: 'Converted Leads', value: statsLoading ? '...' : convertedLeadsCount.toLocaleString(), icon: '✅', color: '#dcfce7', textColor: '#22c55e', trend: 'Won deals', trendUp: true },
+    { title: 'Pending Leads', value: statsLoading ? '...' : pendingLeadsCount.toLocaleString(), icon: '⏳', color: '#fef3c7', textColor: '#f59e0b', trend: 'In sales funnel', trendUp: false },
+    { title: 'Conversion Rate', value: statsLoading ? '...' : `${conversionRateVal}%`, icon: '📈', color: '#fce7f3', textColor: '#ec4899', trend: 'Overall efficiency', trendUp: true },
   ];
 
   return (

@@ -100,10 +100,6 @@ const leadSchema = new mongoose.Schema(
 
     // Professional details for AI Prediction
     role_position: { type: String, default: "Not Specified" },
-    highest_education: String,
-    years_of_experience: { type: Number, default: 0 },
-    skills: String,
-    expected_salary: { type: Number, default: 0 },
 
     // Link to AI service's unique ID
     ai_unique_id: String,

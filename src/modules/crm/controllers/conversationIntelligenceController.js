@@ -2,12 +2,12 @@ const aiService = require("../../../utils/aiService");
 
 exports.analyze = async (req, res) => {
   try {
-    const { source_type, messages } = req.body;
+    const { source_type, conversation_text, messages } = req.body;
 
-    if (!messages || !Array.isArray(messages)) {
+    if (!conversation_text && (!messages || !Array.isArray(messages))) {
       return res.status(400).json({
         success: false,
-        message: "Missing or invalid 'messages' array in request body.",
+        message: "Missing or invalid 'conversation_text' or 'messages' array in request body.",
       });
     }
 

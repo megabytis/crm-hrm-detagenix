@@ -10,7 +10,7 @@ class AiService {
   constructor() {
     this.client = axios.create({
       baseURL: AI_SERVICE_URL,
-      timeout: 10000,
+      timeout: 30000,
       headers: {
         "Content-Type": "application/json",
       },
@@ -31,10 +31,32 @@ class AiService {
   async predictLeadTemperature(leadData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post("/predict", leadData);
+      // Map frontend/mongoose fields to the exact snake_case expected by Python's LeadInput
+      const payload = {
+        name: leadData.name || "N/A",
+        email: leadData.email || "unknown@example.com",
+        phone: leadData.phone || "N/A",
+        location: leadData.location || "N/A",
+        linkedin_profile: leadData.linkedinProfile || leadData.linkedin_profile || "N/A",
+        company_name: leadData.companyName || leadData.company_name || "N/A",
+        company_website: leadData.companyWebsite || leadData.company_website || "N/A",
+        company_email: leadData.companyEmail || leadData.company_email || "N/A",
+        
+        // Match required field
+        role_position: leadData.role_position || leadData.role || "Not Specified",
+        
+        // Optional numerical/categorical fields
+        willing_to_relocate: leadData.willing_to_relocate || "No",
+        
+        // Legacy
+        availability: leadData.availability || "Immediately",
+        interview_status: leadData.interview_status || "New"
+      };
+
+      const response = await this.client.post("/predict", payload);
       return response.data;
     } catch (error) {
-      console.error("AI Lead Prediction Failed:", error.message);
+      console.error("AI Lead Prediction Failed:", error.response?.data || error.message);
       return null;
     }
   }

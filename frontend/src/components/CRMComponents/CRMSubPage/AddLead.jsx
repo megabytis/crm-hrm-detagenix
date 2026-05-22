@@ -8,6 +8,8 @@ const AddLead = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
+  // PAIRING AI: addedLeadResult stores the returned lead document containing dynamic ML scores and predictions for immediate UI display
+  const [addedLeadResult, setAddedLeadResult] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -20,7 +22,7 @@ const AddLead = () => {
     companyEmail: '',
     source: '',
     role: '',
-  leadId: '',
+    leadId: '',
     requirementDetails: '',
     status: 'New',
     priority: 'Medium',
@@ -52,7 +54,9 @@ const AddLead = () => {
         source: formData.source,
         status: formData.status,
         role: formData.role,
-  leadId: formData.leadId,
+        // PAIRING AI: Aligned React form 'role' with MongoDB database schema 'role_position' contract for consistency
+        role_position: formData.role,
+        leadId: formData.leadId,
         priority: formData.priority,
         requirementDetails: formData.requirementDetails,
       };
@@ -61,7 +65,8 @@ const AddLead = () => {
 
       if (response.success || response.data) {
         alert('Lead added successfully!');
-        navigate('/leads-management');
+        // PAIRING AI: Instead of immediate redirection, preserve response to show live ML predictions directly on screen
+        setAddedLeadResult(response.data);
       }
     } catch (error) {
       console.error('Error adding lead:', error);
@@ -78,6 +83,38 @@ const AddLead = () => {
           <h2>Add Lead</h2>
           <p>Fill in the details below to create a new lead in the system.</p>
         </div>
+
+        {/* PAIRING AI: Dynamic AI Lead Intelligence notification bar displayed immediately upon successful lead entry creation */}
+        {addedLeadResult && (
+          <div style={{
+            background: (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Hot" ? "#fee2e2" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Warm" ? "#fef3c7" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Cold" ? "#e0f2fe" : "#f3f4f6",
+            color: (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Hot" ? "#991b1b" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Warm" ? "#92400e" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Cold" ? "#075985" : "#374151",
+            border: `1px solid ${(typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Hot" ? "#fca5a5" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Warm" ? "#fcd34d" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Cold" ? "#7dd3fc" : "#d1d5db"}`,
+            padding: "16px 20px",
+            borderRadius: "12px",
+            marginBottom: "24px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            fontWeight: 600,
+            fontSize: "15px"
+          }}>
+            <span>🤖 AI Lead Intelligence Check:</span>
+            <span style={{ 
+              background: "#fff", 
+              padding: "4px 12px", 
+              borderRadius: "20px", 
+              border: "inherit",
+              fontSize: "14px"
+            }}>
+              {(typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) || "Unscored"}
+            </span>
+            <span style={{ fontWeight: 400, fontSize: "14px", marginLeft: "10px", color: "inherit" }}>
+              This lead has been successfully registered in the system.
+            </span>
+          </div>
+        )}
 
         <div className="add-lead-main-content">
           <form className="add-lead-form" onSubmit={handleSubmit}>
@@ -214,8 +251,8 @@ const AddLead = () => {
   </div>
 </div>
 
-             <div className="form-group full-width">
-  <label htmlFor="source">LEAD SOURCE</label>
+              <div className="form-group full-width">
+   <label htmlFor="source">LEAD SOURCE</label>
 
   <select
     id="source"
@@ -292,19 +329,83 @@ const AddLead = () => {
             <div className="prediction-card">
               <h3>Lead Information</h3>
 
-              <div className="prediction-placeholder">
-                <div className="prediction-icon">📋</div>
+              {/* PAIRING AI: If lead has been successfully registered, render complete details, AI Model Confidence rating bar, next best action suggestions, and temperature scores in real-time */}
+              {addedLeadResult ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "12px" }}>
+                    <h4 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#111827", fontWeight: 600 }}>{addedLeadResult.name}</h4>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>{addedLeadResult.email}</p>
+                    {addedLeadResult.phone && <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#6b7280" }}>{addedLeadResult.phone}</p>}
+                    {addedLeadResult.location && <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#6b7280" }}>📍 {addedLeadResult.location}</p>}
+                  </div>
 
-                <p>
-                  Fill in the lead details to create and manage
-                  leads effectively.
-                </p>
-              </div>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "#4b5563", fontWeight: 700, display: "block", marginBottom: "6px", letterSpacing: "0.05em" }}>
+                      AI LEAD TEMPERATURE
+                    </span>
+                    <span
+                      style={{
+                        padding: "6px 14px",
+                        fontSize: "13px",
+                        borderRadius: "20px",
+                        background: (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Hot" ? "#fee2e2" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Warm" ? "#fef3c7" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Cold" ? "#e0f2fe" : "#f3f4f6",
+                        color: (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Hot" ? "#991b1b" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Warm" ? "#92400e" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Cold" ? "#075985" : "#374151",
+                        border: `1px solid ${(typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Hot" ? "#fca5a5" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Warm" ? "#fcd34d" : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Cold" ? "#7dd3fc" : "#d1d5db"}`,
+                        fontWeight: 600,
+                        display: "inline-block",
+                      }}
+                    >
+                      {(typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) || "Unknown"}
+                    </span>
+                  </div>
+
+                  {typeof addedLeadResult.ml_prediction === 'object' && addedLeadResult.ml_prediction?.confidence !== undefined && (
+                    <div>
+                      <span style={{ fontSize: "11px", color: "#4b5563", fontWeight: 700, display: "block", marginBottom: "4px", letterSpacing: "0.05em" }}>
+                        AI MODEL CONFIDENCE
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div style={{ flex: 1, height: "6px", background: "#e5e7eb", borderRadius: "3px", overflow: "hidden" }}>
+                          <div style={{ 
+                            width: `${(addedLeadResult.ml_prediction.confidence * 100).toFixed(0)}%`, 
+                            height: "100%", 
+                            background: addedLeadResult.ml_prediction.predicted_temperature === "Hot" ? "#ef4444" : addedLeadResult.ml_prediction.predicted_temperature === "Warm" ? "#f59e0b" : "#3b82f6",
+                            borderRadius: "3px" 
+                          }} />
+                        </div>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#374151" }}>
+                          {(addedLeadResult.ml_prediction.confidence * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: "8px", background: "#f9fafb", padding: "12px", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: "#6b7280", letterSpacing: "0.05em", display: "block", marginBottom: "4px" }}>
+                      NEXT ACTION RECOMMENDATION
+                    </span>
+                    <p style={{ margin: 0, fontSize: "12px", color: "#4b5563", lineHeight: 1.4 }}>
+                      {(typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Hot" 
+                        ? "🔥 Highly engaged prospect! Direct sales should schedule a discovery call immediately."
+                        : (typeof addedLeadResult.ml_prediction === 'object' ? addedLeadResult.ml_prediction?.predicted_temperature : addedLeadResult.ml_prediction) === "Warm"
+                        ? "⚡ Interested lead. Send an introductory product demo email and add to newsletter nurture."
+                        : "❄️ Lower engagement. Keep in email marketing loop for regular monthly updates."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="prediction-placeholder">
+                  <div className="prediction-icon">📋</div>
+                  <p>
+                    Fill in the lead details to create and manage
+                    leads effectively.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="info-card">
               <h3>Lead Tips</h3>
-
               <ul>
                 <li>Verify email and phone before saving.</li>
                 <li>Keep source details accurate.</li>

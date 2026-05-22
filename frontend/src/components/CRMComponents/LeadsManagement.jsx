@@ -713,6 +713,8 @@ const LeadsManagement = () => {
                   "Phone",
                   "Source",
                   "Status",
+                  // PAIRING AI: Integrated AI Temp column header to dynamically render machine-learning lead temperature outputs
+                  "AI Temp",
                   "Created At",
                   "Action",
                 ].map((heading) => (
@@ -736,7 +738,7 @@ const LeadsManagement = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" style={{ 
+                  <td colSpan="8" style={{ 
                     padding: "40px", 
                     textAlign: "center", 
                     color: "#64748b",
@@ -747,7 +749,7 @@ const LeadsManagement = () => {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="7" style={{ 
+                  <td colSpan="8" style={{ 
                     padding: "40px", 
                     textAlign: "center", 
                     color: "#ef4444",
@@ -758,7 +760,7 @@ const LeadsManagement = () => {
                 </tr>
               ) : currentLeads.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ 
+                  <td colSpan="8" style={{ 
                     padding: "40px", 
                     textAlign: "center", 
                     color: "#64748b",
@@ -818,6 +820,23 @@ const LeadsManagement = () => {
                           }}
                         >
                           {lead.status}
+                        </span>
+                      </td>
+
+                      {/* PAIRING AI: Render lead's dynamically predicted ML lead temperature as color-coded badges directly in datagrid row */}
+                      <td style={{ padding: "14px 16px" }}>
+                        <span
+                          style={{
+                            padding: "4px 10px",
+                            fontSize: "12px",
+                            borderRadius: "6px",
+                            background: (typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Hot" ? "#fee2e2" : (typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Warm" ? "#fef3c7" : (typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Cold" ? "#e0f2fe" : "#f3f4f6",
+                            color: (typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Hot" ? "#991b1b" : (typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Warm" ? "#92400e" : (typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Cold" ? "#075985" : "#374151",
+                            border: `1px solid ${(typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Hot" ? "#fca5a5" : (typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Warm" ? "#fcd34d" : (typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) === "Cold" ? "#7dd3fc" : "#d1d5db"}`,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {(typeof lead.ml_prediction === 'object' ? lead.ml_prediction?.predicted_temperature : lead.ml_prediction) || "Unscored"}
                         </span>
                       </td>
 

@@ -15,19 +15,24 @@ exports.createLead = async (req, res) => {
       }
     }
 
+    // Ensure role_position is set if role is passed
+    if (req.body.role && !req.body.role_position) {
+      req.body.role_position = req.body.role;
+    }
+
     const lead = await Lead.create(req.body);
 
-    // AI Integration: Predict Lead Temperature (Asynchronous)
-    aiService
-      .predictLeadTemperature(req.body)
-      .then(async (prediction) => {
-        if (prediction && prediction.success && prediction.prediction) {
-          lead.ml_prediction = prediction.prediction;
-          if (prediction.unique_id) lead.ai_unique_id = prediction.unique_id;
-          await lead.save();
-        }
-      })
-      .catch((err) => console.error("AI Prediction Error:", err));
+    // AI Integration: Predict Lead Temperature (Synchronously await so frontend gets it instantly!)
+    try {
+      const prediction = await aiService.predictLeadTemperature(req.body);
+      if (prediction && prediction.success && prediction.prediction) {
+        lead.ml_prediction = prediction.prediction;
+        if (prediction.unique_id) lead.ai_unique_id = prediction.unique_id;
+        await lead.save();
+      }
+    } catch (err) {
+      console.error("AI Prediction Error:", err);
+    }
 
     res.status(201).json({
       success: true,

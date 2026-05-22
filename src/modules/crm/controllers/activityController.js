@@ -86,7 +86,9 @@ exports.deleteActivity = async (req, res) => {
     }
 
     // Check if user owns the activity or is admin
-    if (activity.user.toString() !== req.user.id && req.user.role !== 'ADMIN') {
+    const isOwner = activity.user && activity.user.toString() === req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to delete this activity",
