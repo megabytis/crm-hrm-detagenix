@@ -25,6 +25,7 @@ const requestRoutes = require("./modules/request/request.routes");
 const onboardingRoutes = require("./modules/onboarding/onboarding.routes");
 const salaryRoutes = require("./modules/salaryStructure/salaryStructure.routes");
 const aiAdminRoutes = require("./modules/ai-admin/aiAdmin.routes");
+const leadConversionRoutes = require("./modules/crm/routes/leadConversion.routes");
 const app = express();
 const path = require("path");
 
@@ -69,6 +70,7 @@ app.use("/api/crm/chatbot", chatbotRoutes);
 app.use("/api/crm/lead-generation", leadGenerationRoutes);
 app.use("/api/crm/engagement", engagementRoutes);
 app.use("/api/crm/conversation-intelligence", conversationIntelligenceRoutes);
+app.use("/api/crm/lead-conversion",leadConversionRoutes);
 
 // ========================================
 // 🏢 HRM MODULE
@@ -102,9 +104,14 @@ app.use((req, res) => {
   });
 });
 
+//UPLOADS
+app.use(
+  "/uploads",
+  express.static("uploads")
+);
 
 // ========================================
-// 💥 GLOBAL ERROR HANDLER
+// GLOBAL ERROR HANDLER
 // ========================================
 app.use((err, req, res, next) => {
   console.error("ERROR:", err.stack);
