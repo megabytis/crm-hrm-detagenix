@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import './LeadGeneration.css';
 import DashboardLayout from '../../DashboardComponents/DashboardLayout';
+import { crmService } from "../../../services/crmService";
 import { 
   FaSearch, 
   FaFilter, 
@@ -22,6 +23,9 @@ const LeadGeneration = () => {
     location: '',
     quality: 'All'
   });
+  const [selectedLeads, setSelectedLeads] = useState([]);
+   
+  
 
   const mockLeadsData = [
     {
@@ -75,12 +79,77 @@ const LeadGeneration = () => {
       type: 'Hot'
     }
   ];
+  const handleSelectAll = () => {
 
+  // agar already sab selected hain to unselect
+  if (selectedLeads.length === filteredLeads.length) {
+    setSelectedLeads([]);
+  } 
+  
+  // warna sab select
+  else {
+    setSelectedLeads(filteredLeads);
+  }
+};
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
   };
+   const handleSelectLead = (lead) => {
+  setSelectedLeads((prev) => {
+    const exists = prev.find((item) => item.id === lead.id);
 
+    if (exists) {
+      return prev.filter((item) => item.id !== lead.id);
+    } else {
+      return [...prev, lead];
+    }
+  });
+};
+
+const handleSaveLeads = async () => {
+
+  const leadsToSave = selectedLeads;
+
+  if (selectedLeads.length === 0) {
+    alert("Please select at least one lead");
+    return;
+  }
+
+  try {
+
+    setLoading(true);
+
+    // ek ek karke save hongi
+    for (const lead of leadsToSave) {
+
+      await crmService.leads.create({
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone.replace(/\s/g, ""),
+
+        source: "AI",
+        status: "New",
+        priority: lead.type,
+      });
+    }
+
+    alert("Leads saved successfully!");
+
+    setSelectedLeads([]);
+
+  } catch (error) {
+
+    console.error("Error saving leads:", error);
+
+    alert(error.message || "Failed to save leads");
+
+  } finally {
+
+    setLoading(false);
+
+  }
+};
   const handleGenerateLeads = (e) => {
     e.preventDefault();
     setLoading(true);
@@ -257,6 +326,13 @@ const LeadGeneration = () => {
                   <button className="icon-btn" title="Filter"><FaFilter /></button>
                   <button className="icon-btn" title="Refresh"><FaSyncAlt /></button>
                   <button className="icon-btn" title="Export CSV"><FaDownload /></button>
+                  <button
+  className="icon-btn"
+  title="Save Leads"
+  onClick={handleSaveLeads}
+>
+  💾
+</button>
                 </div>
               </div>
 
@@ -272,6 +348,26 @@ const LeadGeneration = () => {
                         <th>PHONE</th>
                         <th>LEAD SCORE</th>
                         <th>LEAD TYPE</th>
+                        <th>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      justifyContent: "center",
+    }}
+  >
+    <input
+      type="checkbox"
+      checked={
+        filteredLeads.length > 0 &&
+        selectedLeads.length === filteredLeads.length
+      }
+      onChange={handleSelectAll}
+    />
+    SELECT
+  </div>
+</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -303,11 +399,21 @@ const LeadGeneration = () => {
                               {lead.score}
                             </div>
                           </td>
+
                           <td>
                             <span className={`badge badge-${lead.type.toLowerCase()}`}>
                               {lead.type}
                             </span>
                           </td>
+                                                    <td>
+  <input
+    type="checkbox"
+    checked={selectedLeads.some(
+      (item) => item.id === lead.id
+    )}
+    onChange={() => handleSelectLead(lead)}
+  />
+</td>
                         </tr>
                       ))}
                     </tbody>

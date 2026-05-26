@@ -3,6 +3,7 @@ import './AddLead.css';
 import DashboardLayout from '../../DashboardComponents/DashboardLayout';
 import { crmService } from '../../../services/crmService';
 import { useNavigate } from 'react-router-dom';
+import  {  useEffect } from 'react';
 
 const AddLead = () => {
   const navigate = useNavigate();
@@ -25,7 +26,28 @@ const AddLead = () => {
     status: 'New',
     priority: 'Medium',
   });
+   const generateLeadId = async () => {
+  try {
+    const response = await crmService.leads.getAll();
 
+    const totalLeads = response?.data?.length || 0;
+
+    const companyShort = "DTGNX";
+    const year = new Date().getFullYear();
+
+    const nextNumber = String(totalLeads + 1).padStart(3, "0");
+
+    const generatedId = `${companyShort}${year}${nextNumber}`;
+
+    setFormData((prev) => ({
+      ...prev,
+      leadId: generatedId,
+    }));
+
+  } catch (error) {
+    console.error("Error generating lead ID:", error);
+  }
+};
   const handleChange = (e) => {
     const { id, value } = e.target;
 
@@ -34,7 +56,9 @@ const AddLead = () => {
       [id]: value,
     }));
   };
-
+useEffect(() => {
+  generateLeadId();
+}, []);
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -56,7 +80,7 @@ const AddLead = () => {
         priority: formData.priority,
         requirementDetails: formData.requirementDetails,
       };
-
+     
       const response = await crmService.leads.create(leadData);
 
       if (response.success || response.data) {
@@ -205,12 +229,12 @@ const AddLead = () => {
     <label htmlFor="leadId">LEAD ID</label>
 
     <input
-      type="text"
-      id="leadId"
-      placeholder="Enter Lead ID"
-      value={formData.leadId}
-      onChange={handleChange}
-    />
+  type="text"
+  id="leadId"
+  value={formData.leadId}
+  readOnly
+  style={{ background: "#f3f4f6", cursor: "not-allowed" }}
+/>
   </div>
 </div>
 
