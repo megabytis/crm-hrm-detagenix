@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const leadSchema = new mongoose.Schema(
   {
+    leadId: {
+  type: String,
+  unique: true,
+  trim: true,
+  required: true,
+},
     // Basic Info
     name: {
       type: String,
@@ -70,6 +76,8 @@ const leadSchema = new mongoose.Schema(
         "Walk-in",
         "Cold Call",
         "Other",
+        "AI" 
+        
       ],
       default: "Other",
     },
@@ -93,10 +101,10 @@ const leadSchema = new mongoose.Schema(
     },
 
     priority: {
-      type: String,
-      enum: ["Low", "Medium", "High"],
-      default: "Medium",
-    },
+  type: String,
+  enum: ["Cold", "Warm", "Hot"],
+  default: "Warm",
+},
   },
   {
     timestamps: true,

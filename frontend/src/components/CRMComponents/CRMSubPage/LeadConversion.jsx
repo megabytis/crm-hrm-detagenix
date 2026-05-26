@@ -4,10 +4,10 @@ import DashboardLayout from '../../DashboardComponents/DashboardLayout';
 
 const LeadConversion = () => {
   const [loading, setLoading] = useState(false);
-  const [trainingData, setTrainingData] = useState({
-    historyLimit: '',
-    minTrainRows: ''
-  });
+  // const [trainingData, setTrainingData] = useState({
+  //   historyLimit: '',
+  //   minTrainRows: ''
+  // });
   
   const [predictionData, setPredictionData] = useState({
     industry: '',
@@ -17,7 +17,7 @@ const LeadConversion = () => {
     emailOpenRate: '',
     websiteVisits: ''
   });
-
+   const [selectedFile, setSelectedFile] = useState(null);
   const handleTrainingChange = (e) => {
     const { id, value } = e.target;
     setTrainingData(prev => ({ ...prev, [id]: value }));
@@ -77,7 +77,7 @@ const LeadConversion = () => {
             </div>
             
             <form onSubmit={handlePredict} className="conversion-form">
-              <div className="training-section">
+              {/* <div className="training-section">
                 <div className="form-group-title">Train Model From Historical Data</div>
                 <div className="form-row">
                   <div className="form-group">
@@ -99,7 +99,7 @@ const LeadConversion = () => {
                     />
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               <div className="prediction-inputs-section">
                 <div className="form-group-title">Input Prediction Data</div>
@@ -146,26 +146,34 @@ const LeadConversion = () => {
                   </div>
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="emailOpenRate">EMAIL OPEN RATE (%)</label>
-                    <input 
-                      type="number" 
-                      id="emailOpenRate" 
-                      value={predictionData.emailOpenRate} 
-                      onChange={handlePredictionChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="websiteVisits">WEBSITE VISITS</label>
-                    <input 
-                      type="number" 
-                      id="websiteVisits" 
-                      value={predictionData.websiteVisits} 
-                      onChange={handlePredictionChange}
-                    />
-                  </div>
-                </div>
+               <div className="form-row">
+  <div className="form-group">
+    <label htmlFor="emailOpenRate">EMAIL OPEN RATE (%)</label>
+    <input
+      type="number"
+      id="emailOpenRate"
+      value={predictionData.emailOpenRate}
+      onChange={handlePredictionChange}
+    />
+  </div>
+
+  <div className="form-group">
+    <label htmlFor="websiteVisits">WEBSITE VISITS</label>
+    <input
+      type="number"
+      id="websiteVisits"
+      value={predictionData.websiteVisits}
+      onChange={handlePredictionChange}
+    />
+  </div>
+</div>
+
+<div className="form-row">
+  <div className="form-group">
+    <label htmlFor="document">UPLOAD DOCUMENT</label>
+    <input type="file" id="document" />
+  </div>
+</div>
               </div>
 
               <div className="sample-buttons">

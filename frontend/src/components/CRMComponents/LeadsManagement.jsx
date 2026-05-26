@@ -21,11 +21,13 @@ const LeadsManagement = () => {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [newLead, setNewLead] = useState({
+    leadId: "",
     name: "",
     email: "",
     phone: "",
     source: "Website",
-    status: "New"
+    status: "New",
+     priority: "Warm"
   });
   const [editingLead, setEditingLead] = useState({
     _id: "",
@@ -33,7 +35,9 @@ const LeadsManagement = () => {
     email: "",
     phone: "",
     source: "Website",
-    status: "New"
+    status: "New",
+     priority: "Warm",
+     leadId: "",
   });
 
   // Fetch leads from API
@@ -60,6 +64,14 @@ const LeadsManagement = () => {
   useEffect(() => {
     fetchLeads();
   }, []);
+  const generateLeadId = () => {
+  const companyShort = "DTGNX";
+  const year = new Date().getFullYear();
+
+  const nextNumber = String(leads.length + 1).padStart(3, "0");
+
+  return `${companyShort}${year}${nextNumber}`;
+};
 
   // Handle Edit Lead
   const handleEditLead = (lead) => {
@@ -69,7 +81,8 @@ const LeadsManagement = () => {
       email: lead.email,
       phone: lead.phone,
       source: lead.source,
-      status: lead.status
+      status: lead.status,
+       priority: lead.priority
     });
     setShowEditModal(true);
   };
@@ -110,7 +123,8 @@ const LeadsManagement = () => {
         email: "",
         phone: "",
         source: "Website",
-        status: "New"
+        status: "New",
+        priority: "Warm"
       });
       
       // Close modal
@@ -219,7 +233,14 @@ const LeadsManagement = () => {
         <div style={{ marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div></div>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+  setNewLead({
+    ...newLead,
+    leadId: generateLeadId(),
+  });
+
+  setShowAddModal(true);
+}}
             style={{
               background: "#10b981",
               border: "none",
@@ -547,7 +568,7 @@ const LeadsManagement = () => {
       color: "#111827",
     }}
   >
-    {leads.filter((lead) => lead.status === "Hot").length}
+    {leads.filter((lead) => lead.priority === "Hot").length}
   </p>
 
   <p
@@ -613,7 +634,7 @@ const LeadsManagement = () => {
       color: "#111827",
     }}
   >
-    {leads.filter((lead) => lead.status === "Warm").length}
+    {leads.filter((lead) => lead.priority === "Warm").length}
   </p>
 
   <p
@@ -679,7 +700,7 @@ const LeadsManagement = () => {
       color: "#111827",
     }}
   >
-    {leads.filter((lead) => lead.status === "Cold").length}
+    {leads.filter((lead) => lead.priority === "Cold").length}
   </p>
 
   <p
@@ -708,13 +729,16 @@ const LeadsManagement = () => {
             <thead style={{ background: "#f9fafb" }}>
               <tr>
                 {[
+                  "Lead ID",
                   "Name",
                   "Email",
                   "Phone",
                   "Source",
                   "Status",
+                  "Lead Priority",
                   "Created At",
                   "Action",
+                  
                 ].map((heading) => (
                   <th
                     key={heading}
@@ -777,6 +801,9 @@ const LeadsManagement = () => {
                       key={lead._id}
                       style={{ borderBottom: "1px solid #f3f4f6" }}
                     >
+                      <td style={{ padding: "14px 16px", fontWeight: 600 }}>
+  {lead.leadId}
+</td>
                       <td style={{ padding: "14px 16px", fontWeight: 500 }}>
                         {lead.name}
                       </td>
@@ -820,6 +847,39 @@ const LeadsManagement = () => {
                           {lead.status}
                         </span>
                       </td>
+                      <td style={{ padding: "14px 16px" }}>
+  <span
+    style={{
+      padding: "4px 10px",
+      fontSize: "12px",
+      borderRadius: "6px",
+      background:
+        lead.priority === "Hot"
+          ? "#fef2f2"
+          : lead.priority === "Warm"
+          ? "#fffbeb"
+          : "#eff6ff",
+
+      color:
+        lead.priority === "Hot"
+          ? "#dc2626"
+          : lead.priority === "Warm"
+          ? "#d97706"
+          : "#2563eb",
+
+      border:
+        lead.priority === "Hot"
+          ? "1px solid #fecaca"
+          : lead.priority === "Warm"
+          ? "1px solid #fde68a"
+          : "1px solid #bfdbfe",
+
+      fontWeight: 500,
+    }}
+  >
+    {lead.priority}
+  </span>
+</td>
 
                       <td style={{ padding: "14px 16px", color: "#6b7280" }}>
                         {new Date(lead.createdAt).toLocaleDateString()}
@@ -995,6 +1055,34 @@ const LeadsManagement = () => {
             
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <div>
+  <label
+    style={{
+      display: "block",
+      marginBottom: "8px",
+      fontSize: "14px",
+      fontWeight: "500",
+    }}
+  >
+    Lead ID
+  </label>
+
+  <input
+    type="text"
+    value={newLead.leadId}
+    readOnly
+    style={{
+      width: "100%",
+      padding: "12px",
+      border: "1px solid #d1d5db",
+      borderRadius: "8px",
+      fontSize: "14px",
+      background: "#f9fafb",
+      color: "#374151",
+      fontWeight: "600",
+    }}
+  />
+</div>
+              <div>
                 <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "500" }}>
                   Name *
                 </label>
@@ -1095,6 +1183,36 @@ const LeadsManagement = () => {
                   <option value="Lost">Lost</option>
                 </select>
               </div>
+              <div>
+  <label
+    style={{
+      display: "block",
+      marginBottom: "8px",
+      fontSize: "14px",
+      fontWeight: "500",
+    }}
+  >
+    Lead Priority
+  </label>
+
+  <select
+    value={newLead.priority}
+    onChange={(e) =>
+      setNewLead({ ...newLead, priority: e.target.value })
+    }
+    style={{
+      width: "100%",
+      padding: "12px",
+      border: "1px solid #d1d5db",
+      borderRadius: "8px",
+      fontSize: "14px",
+    }}
+  >
+    <option value="Hot">Hot</option>
+    <option value="Warm">Warm</option>
+    <option value="Cold">Cold</option>
+  </select>
+</div>
             </div>
 
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "24px" }}>
@@ -1266,6 +1384,39 @@ const LeadsManagement = () => {
                   <option value="Lost">Lost</option>
                 </select>
               </div>
+              <div>
+  <label
+    style={{
+      display: "block",
+      marginBottom: "8px",
+      fontSize: "14px",
+      fontWeight: "500",
+    }}
+  >
+    Lead Priority
+  </label>
+
+  <select
+    value={editingLead.priority}
+    onChange={(e) =>
+      setEditingLead({
+        ...editingLead,
+        priority: e.target.value,
+      })
+    }
+    style={{
+      width: "100%",
+      padding: "12px",
+      border: "1px solid #d1d5db",
+      borderRadius: "8px",
+      fontSize: "14px",
+    }}
+  >
+    <option value="Hot">Hot</option>
+    <option value="Warm">Warm</option>
+    <option value="Cold">Cold</option>
+  </select>
+</div>
             </div>
 
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "24px" }}>
