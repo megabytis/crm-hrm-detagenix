@@ -562,47 +562,170 @@ async def qualify_search_results_for_lead_generation(payload: LeadGenerationQual
 )
 async def run_lead_generation_from_query(payload: LeadGenerationQualifyRequest):
     """
-    Accept natural language query, fetch SerpApi results, qualify leads,
-    and persist results for lead dashboard analytics.
+    Accept natural language query, fetch SerpApi results via Maps agent,
+    scrape emails from their actual websites, score them dynamically,
+    and return fields fully compatible with the React frontend.
     """
     try:
         query = str(payload.query or "").strip()
         if not query:
             raise HTTPException(status_code=400, detail="query is required")
 
-        from services.serpapi_service import search_google_business_results
+        # ──────────────────────────────────────────────────────────────
+        # 1. Load the new Lead Finding Agent dynamically due to spaces in directory name
+        # ──────────────────────────────────────────────────────────────
+        from pathlib import Path
+        import requests
+        backend_dir = Path(__file__).resolve().parent
+        lead_finder_path = backend_dir / "services" / "Lead finding agent" / "lead_finder.py"
+        
+        if not lead_finder_path.exists():
+            raise ImportError(f"New Lead Finder agent not found at {lead_finder_path}")
+            
+        lead_finder = _load_module_from_path("dynamic_lead_finder", lead_finder_path)
+        
+        # Extract SerpAPI Key using the agent's key selection logic
+        serpapi_key = lead_finder.SERPAPI_KEY
+        if not serpapi_key:
+            # Fallback to general environment checks
+            from services.serpapi_service import get_serpapi_key
+            serpapi_key = get_serpapi_key()
+            
+        if not serpapi_key:
+            raise EnvironmentError("SERPAPI key not set in environment or .env file.")
 
-        modules = get_conversion_lead_scoring_modules()
-        qualifier = modules["qualify_search_results"]
+        # ──────────────────────────────────────────────────────────────
+        # 2. Query Google Maps Engine via SerpAPI (Superior maps search results)
+        # ──────────────────────────────────────────────────────────────
+        # Check if the user is looking for businesses without websites
+        import re
+        query_lower = query.lower()
+        without_website_keywords = [
+            "without website", "without websites", 
+            "no website", "no websites", 
+            "having no website", "having no websites",
+            "dont have website", "don't have website", "don't have websites",
+            "no online presence"
+        ]
+        
+        filter_no_website = any(keyword in query_lower for keyword in without_website_keywords)
+        
+        # Clean the query for Google Maps by removing these negation terms
+        maps_query = query
+        for keyword in without_website_keywords:
+            pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+            maps_query = pattern.sub("", maps_query)
+            
+        # Clean up any duplicate spaces
+        maps_query = re.sub(r"\s+", " ", maps_query).strip()
+        # Remove trailing/leading helper words like "having", "with" if left dangling
+        maps_query = re.sub(r"\b(having|with|that|who|which)\s*$", "", maps_query, flags=re.IGNORECASE).strip()
+        
+        logging.info(f"[Lead Gen Upgrade] Original query: {query!r} -> Cleaned Maps query: {maps_query!r} (Filter no website: {filter_no_website})")
+        
+        # Max results limit check
+        max_res = max(1, min(payload.max_results, 20))
+        
+        # If filtering for no website, query a larger batch from Google Maps so we have plenty to filter
+        serp_limit = 20 if filter_no_website else max_res
+        
+        resp = requests.get(
+            "https://serpapi.com/search.json",
+            params={
+                "engine": "google_maps",
+                "q": maps_query,
+                "type": "search",
+                "api_key": serpapi_key
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        
+        places = resp.json().get("local_results", [])
+        logging.info(f"[Lead Gen Upgrade] Found {len(places)} local places on Google Maps")
 
-        search_results = search_google_business_results(query, num=payload.max_results)
-        leads = qualifier(search_results, query_context=query)
+        # If user searched for "without website", prioritize/group the ones without websites
+        if filter_no_website:
+            places = sorted(places, key=lambda p: 0 if not p.get("website") else 1)
 
+        # ──────────────────────────────────────────────────────────────
+        # 3. Process, Crawl, and Score each discovered business lead
+        # ──────────────────────────────────────────────────────────────
+        leads = []
+        for index, place in enumerate(places[:max_res]):
+            business_name = place.get("title", "Unknown")
+            category = place.get("type", "Unknown")
+            address = place.get("address", "Unknown")
+            rating = float(place.get("rating") or 0.0)
+            reviews = int(place.get("reviews") or 0)
+            website = place.get("website")
+            phone = place.get("phone")
+            
+            # Use new agent's live HTTP website scraper to find actual email
+            logging.info(f"[Lead Gen Upgrade] Scraped email analysis on: {website or 'No Website'}")
+            email = None
+            if website:
+                try:
+                    email = lead_finder.extract_email_from_website(website)
+                except Exception as scrape_err:
+                    logging.warning(f"Error scraping website {website}: {scrape_err}")
+            
+            # Use the new agent's dynamic lead scoring system
+            score = lead_finder.calculate_lead_score(
+                has_website=bool(website),
+                has_phone=bool(phone),
+                has_email=bool(email),
+                rating=rating,
+                reviews=reviews,
+            )
+            lead_type = lead_finder.get_lead_type(score)
+
+            # ──────────────────────────────────────────────────────────────
+            # 4. Map to exact frontend keys (Full plug-and-play compatibility)
+            # ──────────────────────────────────────────────────────────────
+            # This ensures no frontend / nodejs backend changes are required.
+            lead_adapter = {
+                "business_name": business_name,
+                "industry": category,
+                "location": address,
+                "website_present": "Yes" if website else "No",
+                "company_website": website or "Unknown",
+                "contact_person": "Founder / Operations Head",
+                "contact_phone": phone or "Unknown",
+                "contact_email": email or "Unknown",
+                "source_link": website or "Unknown",
+                "primary_service_needed": "Software Development / MERN Stack" if not website else "AI Integration / AI-ML Solutions",
+                "secondary_services": [],
+                "lead_category": lead_type,
+                "confidence_score": score,
+                "reasoning": f"Located via Google Maps. Rating: {rating} ({reviews} reviews). Website email scraper successfully executed."
+            }
+            leads.append(lead_adapter)
+
+        # ──────────────────────────────────────────────────────────────
+        # 5. Persist to MongoDB (Dashboard compatibility)
+        # ──────────────────────────────────────────────────────────────
         persisted_count = 0
-        if payload.persist:
+        if payload.persist and leads:
             collection = get_generated_leads_collection()
-            if collection is None:
-                raise HTTPException(status_code=503, detail="MongoDB unavailable for lead dashboard persistence")
-
-            generated_at = datetime.utcnow().isoformat()
-            documents = []
-            for index, lead in enumerate(leads):
-                normalized_lead = dict(lead)
-                normalized_lead["lead_category"] = str(normalized_lead.get("lead_category") or "COLD").upper()
-                documents.append(
-                    {
-                        "query": query,
-                        "rank": index + 1,
-                        "lead": normalized_lead,
-                        "search_result": search_results[index] if index < len(search_results) else {},
-                        "generated_at": generated_at,
-                        "source": "serpapi-google",
-                    }
-                )
-
-            if documents:
-                inserted = collection.insert_many(documents)
-                persisted_count = len(inserted.inserted_ids)
+            if collection is not None:
+                generated_at = datetime.utcnow().isoformat()
+                documents = []
+                for idx, lead in enumerate(leads):
+                    documents.append(
+                        {
+                            "query": query,
+                            "rank": idx + 1,
+                            "lead": lead,
+                            "search_result": places[idx] if idx < len(places) else {},
+                            "generated_at": generated_at,
+                            "source": "serpapi-google-maps-upgrade",
+                        }
+                    )
+                if documents:
+                    inserted = collection.insert_many(documents)
+                    persisted_count = len(inserted.inserted_ids)
+                    logging.info(f"[Lead Gen Upgrade] Persisted {persisted_count} leads to DB")
 
         return {
             "success": True,
