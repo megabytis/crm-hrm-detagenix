@@ -58,6 +58,7 @@ const leadSchema = new mongoose.Schema(
       type: String,
       unique: true,
       trim: true,
+      required: true,
     },
 
     source: {
@@ -70,6 +71,8 @@ const leadSchema = new mongoose.Schema(
         "Walk-in",
         "Cold Call",
         "Other",
+        "AI"
+
       ],
       default: "Other",
     },
@@ -95,7 +98,7 @@ const leadSchema = new mongoose.Schema(
     priority: {
       type: String,
       enum: ["Low", "Medium", "High"],
-      default: "Medium",
+      default: "Warm",
     },
 
     // Professional details for AI Prediction

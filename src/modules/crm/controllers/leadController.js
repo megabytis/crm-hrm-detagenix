@@ -3,6 +3,30 @@ const aiService = require("../../../utils/aiService");
 
 /* ================= CREATE LEAD ================= */
 
+// exports.createLead = async (req, res) => {
+//   try {
+
+//     console.log("BODY DATA:", req.body);
+
+//     const lead = await Lead.create(req.body);
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Lead created successfully",
+//       data: lead,
+//     });
+
+//   } catch (error) {
+
+//     console.log(error);
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to create lead",
+//       error: error.message,
+//     });
+//   }
+// };
 exports.createLead = async (req, res) => {
   try {
     const { email } = req.body;
@@ -20,7 +44,24 @@ exports.createLead = async (req, res) => {
       req.body.role_position = req.body.role;
     }
 
-    const lead = await Lead.create(req.body);
+    // console.log("BODY DATA:", req.body);
+
+    const companyCode = "DTGNX";
+    const year = new Date().getFullYear();
+
+    // Total leads count
+    const totalLeads = await Lead.countDocuments();
+
+    // Next sequence
+    const nextNumber = totalLeads + 1;
+
+    // Final Lead ID
+    const leadId = `${companyCode}${year}${String(nextNumber).padStart(3, "0")}`;
+
+    const lead = await Lead.create({
+      ...req.body,
+      leadId,
+    });
 
     // AI Integration: Predict Lead Temperature (Synchronously await so frontend gets it instantly!)
     try {
@@ -39,8 +80,17 @@ exports.createLead = async (req, res) => {
       message: "Lead created successfully",
       data: lead,
     });
+
   } catch (error) {
-    console.error("Create Lead Error:", error);
+
+    console.log(error);
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Lead already exists",
+      });
+    }
 
     res.status(500).json({
       success: false,
@@ -49,7 +99,6 @@ exports.createLead = async (req, res) => {
     });
   }
 };
-
 /* ================= GET ALL LEADS ================= */
 
 exports.getLeads = async (req, res) => {
