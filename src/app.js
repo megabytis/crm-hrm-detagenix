@@ -20,7 +20,9 @@ const projectRoutes = require("./modules/project/project.routes");
 const requestRoutes = require("./modules/request/request.routes");
 const onboardingRoutes = require("./modules/onboarding/onboarding.routes");
 const salaryRoutes = require("./modules/salaryStructure/salaryStructure.routes");
+const leadConversionRoutes = require("./modules/crm/routes/leadConversion.routes");
 const app = express();
+const path = require("path");
 
 // ========================================
 // 🌍 GLOBAL MIDDLEWARES
@@ -28,6 +30,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ========================================
 // SWAGGER DOCS
@@ -55,6 +60,7 @@ app.use("/api/crm/customers", customerRoutes);
 app.use("/api/crm/activities", activityRoutes);
 app.use("/api/crm/deals", dealRoutes);
 app.use("/api/crm/reports", reportRoutes);
+app.use("/api/crm/lead-conversion",leadConversionRoutes);
 
 // ========================================
 // 🏢 HRM MODULE
@@ -88,9 +94,14 @@ app.use((req, res) => {
   });
 });
 
+//UPLOADS
+app.use(
+  "/uploads",
+  express.static("uploads")
+);
 
 // ========================================
-// 💥 GLOBAL ERROR HANDLER
+// GLOBAL ERROR HANDLER
 // ========================================
 app.use((err, req, res, next) => {
   console.error("ERROR:", err.stack);

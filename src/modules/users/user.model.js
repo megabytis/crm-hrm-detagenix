@@ -20,6 +20,88 @@ const userSchema = new mongoose.Schema(
       type: String
     },
 
+    // Personal Details Fields
+dateOfBirth: {
+  type: Date,
+},
+
+gender: {
+  type: String,
+  enum: ["male", "female", "other"],
+},
+
+maritalStatus: {
+  type: String,
+  enum: ["single", "married", "divorced"],
+},
+
+bloodGroup: {
+  type: String,
+},
+
+currentAddress: {
+  type: String,
+},
+
+permanentAddress: {
+  type: String,
+},
+
+emergencyContact: {
+  type: String,
+},
+ // ---------------- BANK + PF DETAILS ----------------
+    universalAccountNumber: {
+      type: String
+    },
+
+    pfMemberId: {
+      type: String
+    },
+
+    panNumber: {
+      type: String
+    },
+
+    aadharNumber: {
+      type: String
+    },
+
+    esicNumber: {
+      type: String
+    },
+
+    accountHolderName: {
+      type: String
+    },
+
+    accountNumber: {
+      type: String
+    },
+
+    ifscCode: {
+      type: String
+    },
+
+    bankName: {
+      type: String
+    },
+
+    branchName: {
+      type: String
+    },
+    documents: [
+  {
+    documentType: String,
+    fileUrl: String,
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }
+],
+  
+
     // ✅ NEW FIELD
     department: {
       type: String,

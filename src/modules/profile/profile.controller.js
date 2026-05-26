@@ -46,9 +46,38 @@ const getEmployeeProfile = async (req, res) => {
 
 
 // ✅ Update Employee Profile
+// const updateEmployeeProfile = async (req, res) => {
+//   try {
+
+//     const userId = req.params.id;
+
+//     const updatedUser = await User.findByIdAndUpdate(
+//       userId,
+//       req.body,
+//       { new: true }
+//     ).select("-password");
+
+//     if (!updatedUser) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Employee not found"
+//       });
+//     }
+
+//     res.json({
+//       success: true,
+//       message: "Profile updated successfully",
+//       data: updatedUser
+//     });
+
+//   } catch (error) {
+//     res.status(500).json({
+//       message: error.message
+//     });
+//   }
+// };
 const updateEmployeeProfile = async (req, res) => {
   try {
-
     const userId = req.params.id;
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -64,14 +93,35 @@ const updateEmployeeProfile = async (req, res) => {
       });
     }
 
+    // attendance + payroll bhi same structure maintain krne ke liye
+    const presentDays = await Attendance.countDocuments({
+      employee: userId,
+      checkOut: { $ne: null }
+    });
+
+    const leaveCount = await Leave.countDocuments({
+      employee: userId,
+      status: "Approved"
+    });
+
+    const payroll = await Payroll.findOne({ employee: userId });
+
     res.json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedUser
+      profile: {
+        basicInfo: updatedUser,
+        attendanceSummary: {
+          presentDays,
+          leavesTaken: leaveCount
+        },
+        payrollInfo: payroll
+      }
     });
 
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message
     });
   }
@@ -102,6 +152,55 @@ const updateEmployeeProfile = async (req, res) => {
 //     });
 //   }
 // };
+const uploadDocument = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { documentType } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "File is required",
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    const newDocument = {
+      documentType,
+      fileUrl: `/uploads/${req.file.filename}`,
+    };
+
+    // agar documents array nahi hai to create karo
+    if (!user.documents) {
+      user.documents = [];
+    }
+
+    user.documents.push(newDocument);
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Document uploaded successfully",
+      documents: user.documents,
+    });
+
+  } catch (error) {
+    console.log("Upload error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 const resetPassword = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -145,5 +244,6 @@ const resetPassword = async (req, res) => {
 module.exports = {
   getEmployeeProfile,
   updateEmployeeProfile,
-  resetPassword
+  uploadDocument,
+  resetPassword,
 };

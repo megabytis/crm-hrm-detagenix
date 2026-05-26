@@ -2,6 +2,15 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "../DashboardComponents/DashboardLayout";
 import "../../styles/layout.css";
 import { crmService } from "../../services/crmService";
+import {
+  HiOutlineUsers,
+  HiOutlineSparkles,
+  HiOutlineChartBar,
+  HiOutlineBolt,
+  HiOutlineFire,
+} from "react-icons/hi2";
+
+import { WiDayCloudy, WiSnow } from "react-icons/wi";
 
 const LeadsManagement = () => {
   const [leads, setLeads] = useState([]);
@@ -268,13 +277,13 @@ const LeadsManagement = () => {
                   width: "40px",
                   height: "40px",
                   borderRadius: "8px",
-                  backgroundColor: "#dbeafe",
+                  backgroundColor: "#e0f2fe",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <span style={{ fontSize: "20px", color: "#3b82f6" }}>👥</span>
+                <HiOutlineUsers size={20} color="#38bdf8" />
               </div>
             </div>
             <p
@@ -330,13 +339,13 @@ const LeadsManagement = () => {
                   width: "40px",
                   height: "40px",
                   borderRadius: "8px",
-                  backgroundColor: "#dcfce7",
+                  backgroundColor: "#e0f2fe",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <span style={{ fontSize: "20px", color: "#22c55e" }}>✨</span>
+                <HiOutlineSparkles size={20} color="#38bdf8" />
               </div>
             </div>
             <p
@@ -392,13 +401,13 @@ const LeadsManagement = () => {
                   width: "40px",
                   height: "40px",
                   borderRadius: "8px",
-                  backgroundColor: "#fef3c7",
+                  backgroundColor: "#e0f2fe",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <span style={{ fontSize: "20px", color: "#f59e0b" }}>📈</span>
+                <HiOutlineChartBar size={20} color="#38bdf8" />
               </div>
             </div>
             <p
@@ -454,14 +463,15 @@ const LeadsManagement = () => {
                   width: "40px",
                   height: "40px",
                   borderRadius: "8px",
-                  backgroundColor: "#fce7f3",
+                 backgroundColor: "#e0f2fe",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <span style={{ fontSize: "20px", color: "#ec4899" }}>⚡</span>
+                <HiOutlineBolt size={20} color="#38bdf8" />
               </div>
+
             </div>
             <p
               style={{
@@ -483,7 +493,206 @@ const LeadsManagement = () => {
             >
               0% from last month
             </p>
+
+            
           </div>
+          {/* Hot Leads */}
+<div
+  style={{
+    background: "#ffffff",
+    borderRadius: "12px",
+    padding: "20px",
+    border: "1px solid #e5e7eb",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: "12px",
+    }}
+  >
+    <h3
+      style={{
+        margin: 0,
+        fontSize: "14px",
+        fontWeight: "500",
+        color: "#6b7280",
+      }}
+    >
+      Hot Leads
+    </h3>
+
+    <div
+      style={{
+        width: "40px",
+        height: "40px",
+        borderRadius: "8px",
+       backgroundColor: "#e0f2fe",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <HiOutlineFire size={20} color="#38bdf8" />
+    </div>
+  </div>
+
+  <p
+    style={{
+      margin: 0,
+      fontSize: "32px",
+      fontWeight: "700",
+      color: "#111827",
+    }}
+  >
+    {leads.filter((lead) => lead.status === "Hot").length}
+  </p>
+
+  <p
+    style={{
+      margin: "8px 0 0 0",
+      fontSize: "12px",
+      color: "#ef4444",
+      fontWeight: "500",
+    }}
+  >
+    High priority leads
+  </p>
+</div>
+
+{/* Warm Leads */}
+<div
+  style={{
+    background: "#ffffff",
+    borderRadius: "12px",
+    padding: "20px",
+    border: "1px solid #e5e7eb",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: "12px",
+    }}
+  >
+    <h3
+      style={{
+        margin: 0,
+        fontSize: "14px",
+        fontWeight: "500",
+        color: "#6b7280",
+      }}
+    >
+      Warm Leads
+    </h3>
+
+    <div
+      style={{
+        width: "40px",
+        height: "40px",
+        borderRadius: "8px",
+       backgroundColor: "#e0f2fe",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <WiDayCloudy size={22} color="#38bdf8" />
+    </div>
+  </div>
+
+  <p
+    style={{
+      margin: 0,
+      fontSize: "32px",
+      fontWeight: "700",
+      color: "#111827",
+    }}
+  >
+    {leads.filter((lead) => lead.status === "Warm").length}
+  </p>
+
+  <p
+    style={{
+      margin: "8px 0 0 0",
+      fontSize: "12px",
+      color: "#f59e0b",
+      fontWeight: "500",
+    }}
+  >
+    Medium priority leads
+  </p>
+</div>
+
+{/* Cold Leads */}
+<div
+  style={{
+    background: "#ffffff",
+    borderRadius: "12px",
+    padding: "20px",
+    border: "1px solid #e5e7eb",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: "12px",
+    }}
+  >
+    <h3
+      style={{
+        margin: 0,
+        fontSize: "14px",
+        fontWeight: "500",
+        color: "#6b7280",
+      }}
+    >
+      Cold Leads
+    </h3>
+
+    <div
+      style={{
+        width: "40px",
+        height: "40px",
+        borderRadius: "8px",
+        backgroundColor: "#e0f2fe",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <WiSnow size={22} color="#38bdf8" />
+    </div>
+  </div>
+
+  <p
+    style={{
+      margin: 0,
+      fontSize: "32px",
+      fontWeight: "700",
+      color: "#111827",
+    }}
+  >
+    {leads.filter((lead) => lead.status === "Cold").length}
+  </p>
+
+  <p
+    style={{
+      margin: "8px 0 0 0",
+      fontSize: "12px",
+      color: "#3b82f6",
+      fontWeight: "500",
+    }}
+  >
+    Low priority leads
+  </p>
+</div>
         </div>
 
         <div
