@@ -1,9 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './LeadConversion.css';
 import DashboardLayout from '../../DashboardComponents/DashboardLayout';
+import { crmService } from '../../../services/crmService';
 
 const LeadConversion = () => {
   const [loading, setLoading] = useState(false);
+  
+  // Real Database Metrics State
+  const [stats, setStats] = useState({
+    total: 0,
+    converted: 0,
+    pending: 0,
+    rate: 0
+  });
+
+  // Dynamic ML Prediction Result States
+  const [predictionResult, setPredictionResult] = useState(null);
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+
+  // Load leads data and calculate conversion stats dynamically from Mongoose collection
+  useEffect(() => {
+    const fetchLeadConversionStats = async () => {
+      try {
+        const response = await crmService.leads.getAll();
+        const leads = response?.data || [];
+        
+        const total = leads.length;
+        
+        // Count Won, Qualified, or Proposal Sent leads as successfully converted
+        const converted = leads.filter(l => 
+          l.status === 'Qualified' || 
+          l.status === 'Won' || 
+          l.status === 'Proposal Sent'
+        ).length;
+        
+        // Count New or Contacted leads as pending nurturing
+        const pending = leads.filter(l => 
+          l.status === 'New' || 
+          l.status === 'Contacted'
+        ).length;
+        
+        const rate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0';
+        
+        setStats({ total, converted, pending, rate });
+      } catch (error) {
+        console.error("Error loading database stats for Lead Conversion metrics:", error);
+      }
+    };
+    
+    fetchLeadConversionStats();
+  }, []);
+
   // const [trainingData, setTrainingData] = useState({
   //   historyLimit: '',
   //   minTrainRows: ''
@@ -28,21 +75,117 @@ const LeadConversion = () => {
     setPredictionData(prev => ({ ...prev, [id]: value }));
   };
 
-  const handlePredict = (e) => {
+  /*
+    ========================================================================
+    LEGACY MOCK PREDICT HANDLER
+    (Commented out as requested for record keeping and review references)
+    ------------------------------------------------------------------------
+    const handlePredict = (e) => {
+      e.preventDefault();
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+        alert('Prediction generated successfully!');
+      }, 1500);
+    };
+    ========================================================================
+  */
+
+  // ACTIVE API-DRIVEN PREDICTION ENGINE:
+  // Maps React camelCase form keys to Mongoose controller snake_case parameters.
+  // Sends payload to express endpoint `/crm/engagement/conversion/predict`, 
+  // which forwards it to FastAPI's calibrated RandomForest classifier.
+  const handlePredict = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate prediction
-    setTimeout(() => {
+    setShowSuccessBanner(false);
+    
+    try {
+      const payload = {
+        industry: predictionData.industry || "SaaS", // Fallback to SaaS to prevent Pydantic min_length=1 (422) validation failures
+        budget: Number(predictionData.budget) || 0,
+        response_speed: Number(predictionData.responseSpeed) || 0,
+        meeting_count: Number(predictionData.meetingCount) || 0,
+        email_open_rate: Number(predictionData.emailOpenRate) || 0,
+        website_visits: Number(predictionData.websiteVisits) || 0
+      };
+      
+      const response = await crmService.leadConversion.predict(payload);
+      
+      if (response.success && response.data) {
+        setPredictionResult(response.data.result || response.data);
+        setShowSuccessBanner(true);
+        
+        // Scroll smoothly to see the success notification and the prediction sidebar
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (response.result) {
+        setPredictionResult(response.result.result || response.result);
+        setShowSuccessBanner(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        alert("Failed to retrieve prediction results. Please ensure backend is active.");
+      }
+    } catch (error) {
+      console.error("API Lead Prediction Failed:", error);
+      alert(error.message || "Failed to generate prediction probability. Please check backend.");
+    } finally {
       setLoading(false);
-      alert('Prediction generated successfully!');
-    }, 1500);
+    }
   };
 
+  /*
+    ========================================================================
+    LEGACY HARDCODED METRICS DATA
+    (Commented out as requested for record keeping and review references)
+    ------------------------------------------------------------------------
+    const metrics = [
+      { title: 'Total Leads', value: '1,284', icon: '👥', color: '#dbeafe', textColor: '#3b82f6', trend: '+12.5%', trendUp: true },
+      { title: 'Converted Leads', value: '452', icon: '✅', color: '#dcfce7', textColor: '#22c55e', trend: '+8.2%', trendUp: true },
+      { title: 'Pending Leads', value: '832', icon: '⏳', color: '#fef3c7', textColor: '#f59e0b', trend: '-2.4%', trendUp: false },
+      { title: 'Conversion Rate', value: '35.2%', icon: '📈', color: '#fce7f3', textColor: '#ec4899', trend: '+4.1%', trendUp: true },
+    ];
+    ========================================================================
+  */
+
+  // DYNAMIC STATE-DRIVEN METRICS:
+  // Dynamically constructed from current local MongoDB collections data.
   const metrics = [
-    { title: 'Total Leads', value: '1,284', icon: '👥', color: '#dbeafe', textColor: '#3b82f6', trend: '+12.5%', trendUp: true },
-    { title: 'Converted Leads', value: '452', icon: '✅', color: '#dcfce7', textColor: '#22c55e', trend: '+8.2%', trendUp: true },
-    { title: 'Pending Leads', value: '832', icon: '⏳', color: '#fef3c7', textColor: '#f59e0b', trend: '-2.4%', trendUp: false },
-    { title: 'Conversion Rate', value: '35.2%', icon: '📈', color: '#fce7f3', textColor: '#ec4899', trend: '+4.1%', trendUp: true },
+    { 
+      title: 'Total Leads', 
+      value: stats.total.toLocaleString(), 
+      icon: '👥', 
+      color: '#dbeafe', 
+      textColor: '#3b82f6', 
+      trend: 'Real-time', 
+      trendUp: true 
+    },
+    { 
+      title: 'Converted Leads', 
+      value: stats.converted.toLocaleString(), 
+      icon: '✅', 
+      color: '#dcfce7', 
+      textColor: '#22c55e', 
+      trend: 'Real-time', 
+      trendUp: true 
+    },
+    { 
+      title: 'Pending Leads', 
+      value: stats.pending.toLocaleString(), 
+      icon: '⏳', 
+      color: '#fef3c7', 
+      textColor: '#f59e0b', 
+      trend: 'Real-time', 
+      trendUp: false 
+    },
+    { 
+      title: 'Conversion Rate', 
+      value: `${stats.rate}%`, 
+      icon: '📈', 
+      color: '#fce7f3', 
+      textColor: '#ec4899', 
+      trend: 'Real-time', 
+      trendUp: true 
+    },
   ];
 
   return (
@@ -52,6 +195,25 @@ const LeadConversion = () => {
           <h2>Lead Conversion</h2>
           <p>Retrain from historical outcomes and predict conversion probability from business inputs.</p>
         </div>
+
+        {/* Dynamic Green Success Notification Banner matching screenshot */}
+        {showSuccessBanner && (
+          <div style={{
+            backgroundColor: '#ecfdf5',
+            border: '1px solid #10b981',
+            color: '#065f46',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            marginBottom: '24px',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>✅</span> Prediction generated successfully!
+          </div>
+        )}
 
         <div className="metrics-grid">
           {metrics.map((m, i) => (
@@ -177,8 +339,22 @@ const LeadConversion = () => {
               </div>
 
               <div className="sample-buttons">
-                <button type="button" className="sample-btn" onClick={() => setPredictionData({...predictionData, emailOpenRate: 85, meetingCount: 5})}>Use high-intent sample</button>
-                <button type="button" className="sample-btn" onClick={() => setPredictionData({...predictionData, emailOpenRate: 15, meetingCount: 1})}>Use low-intent sample</button>
+                <button type="button" className="sample-btn" onClick={() => setPredictionData({
+                  industry: 'SaaS',
+                  budget: 75000,
+                  responseSpeed: 1,
+                  meetingCount: 5,
+                  emailOpenRate: 85,
+                  websiteVisits: 12
+                })}>Use high-intent sample</button>
+                <button type="button" className="sample-btn" onClick={() => setPredictionData({
+                  industry: 'Finance',
+                  budget: 5000,
+                  responseSpeed: 10,
+                  meetingCount: 1,
+                  emailOpenRate: 15,
+                  websiteVisits: 2
+                })}>Use low-intent sample</button>
               </div>
 
               <button type="submit" className="predict-btn" disabled={loading}>
@@ -190,10 +366,32 @@ const LeadConversion = () => {
           <div className="result-sidebar">
             <div className="result-card">
               <h3>Prediction Result</h3>
-              <div className="result-placeholder">
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>📉</div>
-                <p>No data available. Train model (recommended), then submit the required inputs to view conversion probability percentage.</p>
-              </div>
+              
+              {/* Render dynamic Calibrated RandomForest classifier predictions in real-time */}
+              {predictionResult ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "20px 0" }}>
+                  <div style={{ fontSize: "64px", fontWeight: "800", color: "#10b981", margin: "10px 0" }}>
+                    {predictionResult.conversion_probability_pct}%
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "600", color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "20px" }}>
+                    Conversion Probability
+                  </div>
+                  
+                  <div style={{ width: "100%", textAlign: "left", background: "#f9fafb", padding: "16px", borderRadius: "8px", border: "1px solid #e5e7eb" }}>
+                    <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "8px" }}>
+                      <strong>Model Type:</strong> {predictionResult.model_name || "Calibrated RandomForestClassifier"}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                      <strong>Trained At:</strong> {predictionResult.trained_at ? new Date(predictionResult.trained_at).toLocaleString() : "Recently"}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="result-placeholder">
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>📉</div>
+                  <p>No data available. Train model (recommended), then submit the required inputs to view conversion probability percentage.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

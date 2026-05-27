@@ -58,7 +58,41 @@ const MlStats = () => {
         let coldCount = 0;
         let totalConfidence = 0;
 
-        // PAIRING AI: Parse each lead document's ML predictions to calculate metrics dynamically
+        // PAIRING AI: Parse each lead document's ML predictions to calculate metrics dynamically.
+        // We only count predictions that have been calibrated to valid temperature classes ('Hot', 'Warm', 'Cold'),
+        // successfully filtering out Mongoose's auto-instantiated default "Unknown" nested schema objects.
+        leads.forEach((lead) => {
+          const pred = lead.ml_prediction;
+          if (pred) {
+            let temp = "";
+            let conf = 0;
+
+            if (typeof pred === "object") {
+              temp = pred.predicted_temperature || "";
+              conf = Number(pred.confidence) || 0;
+            } else if (typeof pred === "string") {
+              temp = pred;
+            }
+
+            const cleanTemp = temp.trim().toLowerCase();
+            
+            // Only aggregate if the lead has a valid ML prediction class
+            if (cleanTemp === "hot" || cleanTemp === "warm" || cleanTemp === "cold") {
+              predictedCount++;
+              totalConfidence += conf;
+
+              if (cleanTemp === "hot") {
+                hotCount++;
+              } else if (cleanTemp === "warm") {
+                warmCount++;
+              } else if (cleanTemp === "cold") {
+                coldCount++;
+              }
+            }
+          }
+        });
+
+        /* [LEGACY IMPLEMENTATION - Commented out to satisfy preserve history constraints]
         leads.forEach((lead) => {
           const pred = lead.ml_prediction;
           if (pred) {
@@ -84,6 +118,7 @@ const MlStats = () => {
             }
           }
         });
+        */
 
         // PAIRING AI: Compute exact pipeline statistics and confidence averages
         const coveragePercent = totalLeadsCount > 0 

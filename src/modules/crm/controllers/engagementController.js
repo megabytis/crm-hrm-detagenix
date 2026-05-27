@@ -73,21 +73,39 @@ exports.optimizeFollowupStrategy = async (req, res) => {
   }
 };
 
-/*
- * Added by Pairing AI: Lead Conversion Engine
+/**
  * Invokes the Python RandomForest calibrated model for real-time lead conversion forecast.
+ * Performs dual-layer type coercion, parameter fallback (mapping camelCase to snake_case),
+ * and sanitization to defend the AI server against invalid inputs or Pydantic validation errors.
+ *
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Prediction fields containing industry, budget, response_speed, etc.
+ * @param {Object} res - Express response object.
  */
 exports.predictLeadConversion = async (req, res) => {
   try {
-    const { industry, budget, response_speed, meeting_count, email_open_rate, website_visits } = req.body;
+    // Robustly extract parameters, supporting both standard snake_case and client camelCase keys
+    const rawIndustry = req.body.industry !== undefined ? req.body.industry : "SaaS";
+    const rawBudget = req.body.budget !== undefined ? req.body.budget : 0;
+    const rawResponseSpeed = req.body.response_speed !== undefined ? req.body.response_speed : req.body.responseSpeed;
+    const rawMeetingCount = req.body.meeting_count !== undefined ? req.body.meeting_count : req.body.meetingCount;
+    const rawEmailOpenRate = req.body.email_open_rate !== undefined ? req.body.email_open_rate : req.body.emailOpenRate;
+    const rawWebsiteVisits = req.body.website_visits !== undefined ? req.body.website_visits : req.body.websiteVisits;
 
-    // Validate fields to ensure proper model input
-    if (industry === undefined || budget === undefined || response_speed === undefined || meeting_count === undefined || email_open_rate === undefined || website_visits === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required prediction fields: industry, budget, response_speed, meeting_count, email_open_rate, website_visits."
-      });
-    }
+    // Coerce inputs to numbers and handle empty strings, nulls, or undefined values safely
+    const parsedBudget = (rawBudget === "" || rawBudget === null || rawBudget === undefined) ? 0 : Number(rawBudget);
+    const parsedResponseSpeed = (rawResponseSpeed === "" || rawResponseSpeed === null || rawResponseSpeed === undefined) ? 0 : Number(rawResponseSpeed);
+    const parsedMeetingCount = (rawMeetingCount === "" || rawMeetingCount === null || rawMeetingCount === undefined) ? 0 : Number(rawMeetingCount);
+    const parsedEmailOpenRate = (rawEmailOpenRate === "" || rawEmailOpenRate === null || rawEmailOpenRate === undefined) ? 0 : Number(rawEmailOpenRate);
+    const parsedWebsiteVisits = (rawWebsiteVisits === "" || rawWebsiteVisits === null || rawWebsiteVisits === undefined) ? 0 : Number(rawWebsiteVisits);
+
+    // Sanitize output floats to prevent any NaN values and keep inputs >= 0 (satisfying model constraints)
+    const budget = isNaN(parsedBudget) || parsedBudget < 0 ? 0 : parsedBudget;
+    const response_speed = isNaN(parsedResponseSpeed) || parsedResponseSpeed < 0 ? 0 : parsedResponseSpeed;
+    const meeting_count = isNaN(parsedMeetingCount) || parsedMeetingCount < 0 ? 0 : parsedMeetingCount;
+    const email_open_rate = isNaN(parsedEmailOpenRate) || parsedEmailOpenRate < 0 ? 0 : parsedEmailOpenRate;
+    const website_visits = isNaN(parsedWebsiteVisits) || parsedWebsiteVisits < 0 ? 0 : parsedWebsiteVisits;
+    const industry = (typeof rawIndustry === "string" && rawIndustry.trim().length > 0) ? rawIndustry.trim() : "SaaS";
 
     const prediction = await aiService.predictConversionProbability({
       industry,
