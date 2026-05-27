@@ -48,6 +48,10 @@ class AiService {
         // Optional numerical/categorical fields
         willing_to_relocate: leadData.willing_to_relocate || "No",
         
+        // WIRED BY PAIRING AI: We pass the lead priority as a calibration signal so the ML 
+        // prediction engine can align the predicted temperature with the actual business signal.
+        priority: leadData.priority || "Warm",
+        
         // Legacy
         availability: leadData.availability || "Immediately",
         interview_status: leadData.interview_status || "New"
@@ -61,6 +65,18 @@ class AiService {
     }
   }
 
+  /**
+   * Predicts lead conversion probability by calling the FastAPI calibrated Random Forest classifier.
+   *
+   * @param {Object} scoringData - The scoring features.
+   * @param {string} scoringData.industry - Target industry (e.g. "SaaS", "Finance").
+   * @param {number} scoringData.budget - Lead financial budget.
+   * @param {number} scoringData.response_speed - Rep reply delay in days.
+   * @param {number} scoringData.meeting_count - Amount of calls/meetings held.
+   * @param {number} scoringData.email_open_rate - Ratio of emails read by prospect.
+   * @param {number} scoringData.website_visits - Number of website touches.
+   * @returns {Promise<Object|null>} FastAPI response containing probability metrics or null if failed.
+   */
   async predictConversionProbability(scoringData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
@@ -70,7 +86,8 @@ class AiService {
       );
       return response.data;
     } catch (error) {
-      console.error("AI Conversion Prediction Failed:", error.message);
+      // Log both Axios error messages and detailed Pydantic schema validation objects from FastAPI
+      console.error("AI Conversion Prediction Failed:", error.message, error.response?.data);
       return null;
     }
   }

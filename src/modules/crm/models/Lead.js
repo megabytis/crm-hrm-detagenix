@@ -97,7 +97,7 @@ const leadSchema = new mongoose.Schema(
 
     priority: {
       type: String,
-      enum: ["Low", "Medium", "High"],
+      enum: ["Cold", "Warm", "Hot"],
       default: "Warm",
     },
 

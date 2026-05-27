@@ -49,13 +49,54 @@ exports.createLead = async (req, res) => {
     const companyCode = "DTGNX";
     const year = new Date().getFullYear();
 
-    // Total leads count
-    const totalLeads = await Lead.countDocuments();
+    /*
+      ========================================================================
+      ORIGINAL SUFFIX GENERATOR
+      (Commented out to prevent MongoDB unique key constraint (11000) collision 
+       exceptions when leads are deleted or sequence numbers do not match)
+      ------------------------------------------------------------------------
+      // Total leads count
+      const totalLeads = await Lead.countDocuments();
 
-    // Next sequence
-    const nextNumber = totalLeads + 1;
+      // Next sequence
+      const nextNumber = totalLeads + 1;
 
-    // Final Lead ID
+      // Final Lead ID
+      const leadId = `${companyCode}${year}${String(nextNumber).padStart(3, "0")}`;
+      ========================================================================
+    */
+
+    /*
+      ========================================================================
+      PREVIOUS INCREMENTER (WITHOUT PREFIX FILTER)
+      (collapsed during prefix correction to
+       avoid alphabetical sorting overlap with dummy prefixes starting with "L")
+      ------------------------------------------------------------------------
+      const lastLead = await Lead.findOne({}, { leadId: 1 }).sort({ leadId: -1 });
+      let nextNumber = 1;
+      if (lastLead && lastLead.leadId) {
+        const suffix = lastLead.leadId.slice(-3);
+        const lastNumber = parseInt(suffix, 10);
+        if (!isNaN(lastNumber)) {
+          nextNumber = lastNumber + 1;
+        }
+      }
+      const leadId = `${companyCode}${year}${String(nextNumber).padStart(3, "0")}`;
+      ========================================================================
+    */
+
+    // REPLACED WITH ROBUST TAILING SEQUENTIAL INCREMENTER (WITH PREFIX FILTER):
+    // Filters leadIds starting with "DTGNX" to avoid database sorting overlaps 
+    // with alphabetically higher dummy keys (e.g. "LEAD-DUMMY-WON-X" starts with "L").
+    const lastLead = await Lead.findOne({ leadId: /^DTGNX/ }, { leadId: 1 }).sort({ leadId: -1 });
+    let nextNumber = 1;
+    if (lastLead && lastLead.leadId) {
+      const suffix = lastLead.leadId.slice(-3);
+      const lastNumber = parseInt(suffix, 10);
+      if (!isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
+    }
     const leadId = `${companyCode}${year}${String(nextNumber).padStart(3, "0")}`;
 
     const lead = await Lead.create({

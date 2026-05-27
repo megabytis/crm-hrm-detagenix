@@ -460,7 +460,7 @@ async def predict_lead_temperature(payload: Dict[str, Any]):
 
 
 @app.post("/lead-scoring/conversion/predict", response_model=Dict[str, Any], summary="Predict Lead Conversion Probability")
-async def predict_lead_conversion_probability(payload: ConversionLeadScoringInput):
+async def predict_lead_conversion_probability(payload: Dict[str, Any]):
     """
     Predict conversion probability (%) using dynamic ML scoring.
 
@@ -468,10 +468,37 @@ async def predict_lead_conversion_probability(payload: ConversionLeadScoringInpu
     Output: conversion probability percentage
     """
     try:
+        # Normalize and strip string inputs
+        normalized_payload = {
+            key: (value.strip() if isinstance(value, str) else value)
+            for key, value in (payload or {}).items()
+        }
+
+        # Safe defaults and type normalization for inputs
+        if normalized_payload.get("industry") in ["", None]:
+            normalized_payload["industry"] = "SaaS"
+
+        for field in ["budget", "response_speed", "meeting_count", "email_open_rate", "website_visits"]:
+            val = normalized_payload.get(field)
+            if val in ["", None]:
+                normalized_payload[field] = 0.0
+            else:
+                try:
+                    normalized_payload[field] = float(val)
+                    if normalized_payload[field] < 0:
+                        normalized_payload[field] = 0.0
+                except (ValueError, TypeError):
+                    normalized_payload[field] = 0.0
+
+        try:
+            validated_input = ConversionLeadScoringInput.model_validate(normalized_payload)
+        except ValidationError as validation_error:
+            raise HTTPException(status_code=400, detail=validation_error.errors())
+
         modules = get_conversion_lead_scoring_modules()
         predictor = modules["predict_conversion_probability_details"]
 
-        result = predictor(payload.model_dump())
+        result = predictor(validated_input.model_dump())
         return {
             "success": True,
             "result": result,
