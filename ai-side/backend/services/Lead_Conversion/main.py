@@ -28,7 +28,17 @@ async def lifespan(app: FastAPI):
         print("✅ ML model loaded.")
     except FileNotFoundError:
         raise RuntimeError("catboost_lead_scoring_model.pkl not found. Place it in the same directory.")
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
+    import os
+    # Use GEMINI_API_KEY if available and not dummy, otherwise fallback to GOOGLE_API_KEY
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key or "dummy" in api_key.lower():
+        api_key = os.getenv("GOOGLE_API_KEY")
+    
+    # Explicitly propagate to GOOGLE_API_KEY environment variable to ensure general compatibility
+    if api_key and "dummy" not in api_key.lower():
+        os.environ["GOOGLE_API_KEY"] = api_key
+        
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", google_api_key=api_key)
     print("✅ Gemini LLM ready.")
     yield
 
@@ -39,12 +49,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ==============================================================================
+# LEGACY RESPONSE SCHEMA (WITHOUT LEAD QUALITY SCORE)
+# Kept for reference. Do not delete.
+# ------------------------------------------------------------------------------
+# class LeadScoringResponse(BaseModel):
+#     lead_id: str
+#     conversion_probability: float = Field(..., description="ML-predicted probability (0.0 – 1.0)")
+#     lead_tier: str = Field(..., description="Hot / Warm / Cold classification")
+#     ai_summary: str = Field(..., description="AI-generated executive summary from the uploaded document")
+#     recommended_actions: List[str] = Field(..., description="3 tactical next-step recommendations")
+# ==============================================================================
+
+# UPDATED RESPONSE SCHEMA WITH LEAD QUALITY SCORE (CTO REQUIREMENT)
 class LeadScoringResponse(BaseModel):
     lead_id: str
     conversion_probability: float = Field(..., description="ML-predicted probability (0.0 – 1.0)")
+    lead_quality_score: int = Field(..., description="Lead Quality Score out of 100")
     lead_tier: str = Field(..., description="Hot / Warm / Cold classification")
     ai_summary: str = Field(..., description="AI-generated executive summary from the uploaded document")
     recommended_actions: List[str] = Field(..., description="3 tactical next-step recommendations")
+
 
 
 def assign_lead_tier(prob: float) -> str:
@@ -188,6 +213,7 @@ async def score_lead(
     return LeadScoringResponse(
         lead_id=lead_id,
         conversion_probability=conversion_prob,
+        lead_quality_score=lead_quality_score,
         lead_tier=lead_tier,
         ai_summary=insights["ai_summary"],
         recommended_actions=insights["recommended_actions"],

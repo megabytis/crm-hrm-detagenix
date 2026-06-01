@@ -77,17 +77,48 @@ class AiService {
    * @param {number} scoringData.website_visits - Number of website touches.
    * @returns {Promise<Object|null>} FastAPI response containing probability metrics or null if failed.
    */
+  // ==============================================================================
+  // LEGACY JSON-BASED PREDICT METHOD
+  // Kept for reference. Do not delete.
+  // ------------------------------------------------------------------------------
+  // async predictConversionProbability(scoringData) {
+  //   if (!AI_SERVICE_ENABLED) return null;
+  //   try {
+  //     const response = await this.client.post(
+  //       "/lead-scoring/conversion/predict",
+  //       scoringData,
+  //     );
+  //     return response.data;
+  //   } catch (error) {
+  //     // Log both Axios error messages and detailed Pydantic schema validation objects from FastAPI
+  //     console.error("AI Conversion Prediction Failed:", error.message, error.response?.data);
+  //     return null;
+  //   }
+  // }
+  // ==============================================================================
+
+  // UPDATED MULTIPART FORM-DATA / DYNAMIC PREDICT METHOD (CTO SPEC)
   async predictConversionProbability(scoringData) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
-      const response = await this.client.post(
-        "/lead-scoring/conversion/predict",
-        scoringData,
-      );
-      return response.data;
+      // NOTE: We use Node's native `fetch()` instead of Axios. Axios has known serialization
+      // issues with standard Node.js global `File` and `Blob` objects inside `FormData`,
+      // often stringifying them to "[object File]" or "[object Blob]" (exactly 13 bytes),
+      // which corrupts the uploaded document. Native `fetch` handles them flawlessly.
+      const response = await fetch(`${AI_SERVICE_URL}/lead-scoring/conversion/predict`, {
+        method: "POST",
+        body: scoringData
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI Conversion Prediction HTTP Error:", response.status, errorText);
+        return null;
+      }
+      
+      return await response.json();
     } catch (error) {
-      // Log both Axios error messages and detailed Pydantic schema validation objects from FastAPI
-      console.error("AI Conversion Prediction Failed:", error.message, error.response?.data);
+      console.error("AI Conversion Prediction Failed:", error.message);
       return null;
     }
   }

@@ -13,12 +13,28 @@ from bson import ObjectId
 import logging
 import os
 import sys
+import json # Added to support prompt output parsing
+import io # Added to support document buffer streams
 from services.email_generator import router as email_router
 from services.followup_service import router as followup_router
 from services.client_ltv import router as clv_router
 from services.sales_forecasting import generate_sales_forecast_report
 import importlib.util
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from ai-side/.env
+backend_dir = Path(__file__).resolve().parent
+env_path = backend_dir.parent / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+else:
+    load_dotenv()
+
+# Propagate GEMINI_API_KEY to GOOGLE_API_KEY globally to override dummy values for all services
+gemini_key = os.getenv("GEMINI_API_KEY")
+if gemini_key and "dummy" not in gemini_key.lower():
+    os.environ["GOOGLE_API_KEY"] = gemini_key
 
 # DO NOT import services at module level - causes hangs!
 # from services.ml_prediction_service import lead_scoring_service
@@ -203,6 +219,53 @@ async def health_check():
             "auth_service": "lazy_loaded"
         }
     }
+
+_catboost_model = None
+_catboost_llm = None
+
+def get_catboost_resources():
+    """Lazy loader for CatBoost Lead Conversion Model & Gemini LLM """
+    global _catboost_model, _catboost_llm
+    
+    if _catboost_model is None:
+        try:
+            import sys
+            import joblib
+            from pathlib import Path
+            backend_dir = Path(__file__).resolve().parent
+            lead_conv_dir = str(backend_dir / "services" / "Lead_Conversion")
+            if lead_conv_dir not in sys.path:
+                sys.path.insert(0, lead_conv_dir)
+                
+            model_path = Path(lead_conv_dir) / "catboost_lead_scoring_model.pkl"
+            _catboost_model = joblib.load(model_path)
+            logging.info("✅ CatBoost Lead Scoring Model loaded successfully.")
+        except Exception as e:
+            logging.error(f"Failed to load CatBoost model: {e}")
+            raise RuntimeError(f"CatBoost model failed to load: {e}")
+            
+    if _catboost_llm is None:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            # Use GEMINI_API_KEY if available and not dummy, otherwise fallback to GOOGLE_API_KEY
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key or "dummy" in api_key.lower():
+                api_key = os.getenv("GOOGLE_API_KEY")
+            
+            # Explicitly propagate to GOOGLE_API_KEY environment variable to ensure general compatibility
+            if api_key and "dummy" not in api_key.lower():
+                os.environ["GOOGLE_API_KEY"] = api_key
+            
+            _catboost_llm = ChatGoogleGenerativeAI(
+                model="gemini-2.5-flash-lite",
+                google_api_key=api_key
+            )
+            logging.info("✅ Gemini LLM ready for CatBoost insights.")
+        except Exception as e:
+            logging.error(f"Failed to initialize Gemini LLM: {e}")
+            raise RuntimeError(f"Gemini LLM failed to initialize: {e}")
+            
+    return _catboost_model, _catboost_llm
 
 # Lazy import functions - only load services when needed
 def get_ml_service():
@@ -459,54 +522,253 @@ async def predict_lead_temperature(payload: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/lead-scoring/conversion/predict", response_model=Dict[str, Any], summary="Predict Lead Conversion Probability")
-async def predict_lead_conversion_probability(payload: Dict[str, Any]):
-    """
-    Predict conversion probability (%) using dynamic ML scoring.
+# ==============================================================================
+# LEGACY JSON-BASED PREDICT ROUTE
+# Kept for reference. Do not delete.
+# ------------------------------------------------------------------------------
+# @app.post("/lead-scoring/conversion/predict", response_model=Dict[str, Any], summary="Predict Lead Conversion Probability")
+# async def predict_lead_conversion_probability(payload: Dict[str, Any]):
+#     try:
+#         # Normalize and strip string inputs
+#         normalized_payload = {
+#             key: (value.strip() if isinstance(value, str) else value)
+#             for key, value in (payload or {}).items()
+#         }
+#         if normalized_payload.get("industry") in ["", None]:
+#             normalized_payload["industry"] = "SaaS"
+#         for field in ["budget", "response_speed", "meeting_count", "email_open_rate", "website_visits"]:
+#             val = normalized_payload.get(field)
+#             if val in ["", None]:
+#                 normalized_payload[field] = 0.0
+#             else:
+#                 try:
+#                     normalized_payload[field] = float(val)
+#                     if normalized_payload[field] < 0:
+#                         normalized_payload[field] = 0.0
+#                 except (ValueError, TypeError):
+#                     normalized_payload[field] = 0.0
+#         try:
+#             validated_input = ConversionLeadScoringInput.model_validate(normalized_payload)
+#         except ValidationError as validation_error:
+#             raise HTTPException(status_code=400, detail=validation_error.errors())
+#         modules = get_conversion_lead_scoring_modules()
+#         predictor = modules["predict_conversion_probability_details"]
+#         result = predictor(validated_input.model_dump())
+#         return {
+#             "success": True,
+#             "result": result,
+#         }
+#     except ValueError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         logging.error(f"Error in conversion predict endpoint: {e}", exc_info=True)
+#         raise HTTPException(status_code=500, detail=str(e))
+# ==============================================================================
 
-    Inputs: industry, budget, response_speed, meeting_count, email_open_rate, website_visits
-    Output: conversion probability percentage
+# UPDATED MULTIPART FORM-DATA ROUTE FOR CATBOOST + GEMINI PIPELINE
+@app.post("/lead-scoring/conversion/predict", response_model=Dict[str, Any], summary="Predict Lead Conversion Probability")
+async def predict_lead_conversion_probability(
+    lead_id: str = Form(..., description="Unique lead identifier"),
+    industry: str = Form(..., description="Lead's industry (e.g. Finance, SaaS, Healthcare)"),
+    budget: float = Form(..., description="Customer budget"),
+    meet_count: int = Form(..., description="Total number of meetings held"),
+    email_open_rate: float = Form(..., description="Email open rate (0.0 – 1.0)"),
+    website_visits: int = Form(..., description="Total website visits"),
+    mail_response_count: int = Form(..., description="Number of mail responses received"),
+    document: UploadFile = File(..., description="Supporting document — PDF or DOCX"),
+):
+    """
+    Predict conversion probability (%) using the custom CatBoost ML model and 
+    generate AI summary & tactical next actions via Gemini.
     """
     try:
-        # Normalize and strip string inputs
-        normalized_payload = {
-            key: (value.strip() if isinstance(value, str) else value)
-            for key, value in (payload or {}).items()
+        # 1. Read document file bytes and extract text dynamically
+        file_bytes = await document.read()
+        print(f"[DEBUG] Received document '{document.filename}', size: {len(file_bytes)} bytes, preview: {file_bytes[:100]!r}", flush=True)
+        
+        # Lazy imports for document text extraction
+        import pdfplumber
+        import docx
+        
+        doc_text = ""
+        ext = document.filename.rsplit(".", 1)[-1].lower()
+        if ext == "pdf":
+            text_parts = []
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text_parts.append(page_text)
+            if not text_parts:
+                raise HTTPException(status_code=422, detail="PDF appears to be scanned/image-only; no text could be extracted.")
+            doc_text = "\n".join(text_parts)
+        elif ext == "docx":
+            doc = docx.Document(io.BytesIO(file_bytes))
+            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+            if not paragraphs:
+                raise HTTPException(status_code=422, detail="DOCX appears to be empty.")
+            doc_text = "\n".join(paragraphs)
+        else:
+            raise HTTPException(status_code=415, detail=f"Unsupported file type '.{ext}'. Please upload a PDF or DOCX.")
+
+        # 1.5. Query MongoDB to find the matching lead's real metadata (e.g. Company/Lead Name, Email)
+        lead_name = "Unknown Company"
+        lead_email = "N/A"
+        db_lead = None
+        
+        try:
+            ml_service = get_ml_service()
+            if ml_service and hasattr(ml_service, "collection") and ml_service.collection is not None:
+                from bson import ObjectId
+                # Search by leadId, unique_id, or ObjectId
+                query_conditions = [{"leadId": lead_id}, {"unique_id": lead_id}]
+                if len(lead_id) == 24 and all(c in "0123456789abcdef" for c in lead_id.lower()):
+                    query_conditions.append({"_id": ObjectId(lead_id)})
+                    
+                db_lead = ml_service.collection.find_one({"$or": query_conditions})
+                if db_lead:
+                    lead_name = db_lead.get("name") or db_lead.get("company_name") or db_lead.get("full_name") or "Unknown Company"
+                    lead_email = db_lead.get("email") or "N/A"
+                    print(f"[DEBUG] Verified lead '{lead_id}' in MongoDB. Real Name: '{lead_name}', Email: '{lead_email}'", flush=True)
+                else:
+                    print(f"[DEBUG] Lead ID '{lead_id}' was not found in MongoDB leads collection.", flush=True)
+        except Exception as db_err:
+            print(f"[WARN] Failed to query lead details from MongoDB: {db_err}", flush=True)
+
+        # 2. Lazy load CatBoost model and Gemini LLM resources
+        model, llm = get_catboost_resources()
+
+        # 3. Preprocess and clamp values to defend CatBoost against abnormal features
+        budget = max(0.0, budget)
+        meet_count = max(0, meet_count)
+        website_visits = max(0, website_visits)
+        email_open_rate = max(0.0, min(1.0, email_open_rate))
+        mail_response_count = max(0, mail_response_count)
+
+        # 4. Engineer features using the local LeadFeatureEngineer
+        # Resolve imports dynamically inside the route to avoid system conflict at startup
+        from services.Lead_Conversion.feature_engineer import LeadFeatureEngineer
+        import pandas as pd
+        
+        raw_features = pd.DataFrame([{
+            "industry": industry,
+            "budget": budget,
+            "website_visits": website_visits,
+            "mail_response_count": mail_response_count,
+            "total_meet_count": meet_count,
+            "mail_open_rate": email_open_rate,
+        }])
+        
+        engineer = LeadFeatureEngineer()
+        features = engineer.transform(raw_features)
+
+        # 5. Predict probability via CatBoost
+        prob = float(model.predict_proba(features)[:, 1][0])
+        conversion_prob = round(prob, 4)
+
+        # Assign Lead Tier Classification according to the model thresholds
+        lead_tier = "❄️ Cold"
+        if conversion_prob >= 0.70:
+            lead_tier = "🔥 Hot"
+        elif conversion_prob >= 0.30:
+            lead_tier = "⚡ Warm "
+
+        lead_quality_score = round(conversion_prob * 100)
+
+        # 6. Generate AI Executive Summary & Next Actions utilizing Gemini
+        lead_metrics = {
+            "lead_id": lead_id,
+            "budget": budget,
+            "conversion_probability": conversion_prob,
+            "lead_quality_score": lead_quality_score,
+            "meet_count": meet_count,
+            "web_visits": website_visits,
+            "mail_responses": mail_response_count,
         }
 
-        # Safe defaults and type normalization for inputs
-        if normalized_payload.get("industry") in ["", None]:
-            normalized_payload["industry"] = "SaaS"
+        prompt = f"""
+You are an elite B2B Enterprise Sales Strategist Agent. Analyze the following lead profile and
+attached document text to generate an executive summary and tactical next-step recommendations.
 
-        for field in ["budget", "response_speed", "meeting_count", "email_open_rate", "website_visits"]:
-            val = normalized_payload.get(field)
-            if val in ["", None]:
-                normalized_payload[field] = 0.0
-            else:
-                try:
-                    normalized_payload[field] = float(val)
-                    if normalized_payload[field] < 0:
-                        normalized_payload[field] = 0.0
-                except (ValueError, TypeError):
-                    normalized_payload[field] = 0.0
+--- LEAD STRUCTURAL METRICS ---
+- Lead ID: {lead_metrics['lead_id']}
+- Lead / Company Name: {lead_name}
+- Email: {lead_email}
+- Customer Budget: ${lead_metrics['budget']:,}
+- AI Predicted Conversion Probability: {lead_metrics['conversion_probability']:.2%}
+- Heuristic Lead Quality Score: {lead_metrics['lead_quality_score']}/100
+- Pipeline Activity: {lead_metrics['meet_count']} meetings, {lead_metrics['web_visits']} website visits, {lead_metrics['mail_responses']} mail responses.
 
-        try:
-            validated_input = ConversionLeadScoringInput.model_validate(normalized_payload)
-        except ValidationError as validation_error:
-            raise HTTPException(status_code=400, detail=validation_error.errors())
+--- EXTRACTED ATTACHED DOCUMENTATION ---
+{doc_text[:6000]}
 
-        modules = get_conversion_lead_scoring_modules()
-        predictor = modules["predict_conversion_probability_details"]
+--- CRITICAL STRUCTURAL INSTRUCTION ---
+The lead we are scoring in our CRM is actually '{lead_name}'. 
+The uploaded document might refer to generic template names (like Acme Corp or other template entities).
+You MUST write the executive summary using the real Company/Lead Name ('{lead_name}') as the active entity. 
+If the document uses a different name (e.g. Acme Corp), seamlessly merge the two by attributing the document insights directly to '{lead_name}' (e.g., "{lead_name} (referenced as Acme Corp in attached documents) is..."). 
+Never output the generic template name standalone; always anchor the analysis to '{lead_name}'.
 
-        result = predictor(validated_input.model_dump())
+--- OUTPUT FORMAT ---
+Your response must be a valid JSON object strictly matching this schema. Do NOT include markdown
+formatting (no ```json fences, no extra text outside the JSON).
+{{
+    "ai_summary": "A concise 7-8 sentence summary highlighting who the lead is, their primary business pain points extracted from the document, and their current buying signals.",
+    "recommended_actions": [
+        "Action 1: Immediate specific next step based on the document text.",
+        "Action 2: Tactical advice based on their metrics.",
+        "Action 3: Risk mitigation step."
+    ]
+}}
+"""
+        response = llm.invoke(prompt)
+        raw = response.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        
+        insights = json.loads(raw.strip())
+
+        # Save the prediction result back to MongoDB to ensure the DB profile is fully updated
+        if db_lead:
+            try:
+                ml_service.collection.update_one(
+                    {"_id": db_lead["_id"]},
+                    {
+                        "$set": {
+                            "conversion_probability": conversion_prob,
+                            "lead_quality_score": lead_quality_score,
+                            "lead_tier": lead_tier,
+                            "ai_summary": insights.get("ai_summary", "N/A"),
+                            "recommended_actions": insights.get("recommended_actions", []),
+                            "ml_prediction_updated_at": datetime.now()
+                        }
+                    }
+                )
+                print(f"[DEBUG] Successfully updated lead '{lead_id}' prediction metadata in MongoDB.", flush=True)
+            except Exception as update_err:
+                print(f"[WARN] Failed to write prediction details back to MongoDB: {update_err}", flush=True)
+
+        # 7. Formulate output payload matching both old and new backend/frontend requirements
         return {
             "success": True,
-            "result": result,
+            "result": {
+                "lead_id": lead_id,
+                "conversion_probability": conversion_prob,
+                "conversion_probability_pct": lead_quality_score, # For backward compatibility with React stats
+                "lead_quality_score": lead_quality_score,
+                "lead_tier": lead_tier, 
+                "ai_summary": insights.get("ai_summary", "N/A"),
+                "recommended_actions": insights.get("recommended_actions", []),
+                "model_name": "CatBoost Classifier & Gemini LLM",
+                "trained_at": datetime.now().isoformat()
+            }
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logging.error(f"Error in conversion predict endpoint: {e}", exc_info=True)
+        logging.error(f"Error in CatBoost lead conversion prediction: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

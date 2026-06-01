@@ -144,3 +144,4 @@ __pycache__
 *.pycml_model/
 
 ml_model/
+uploads/
