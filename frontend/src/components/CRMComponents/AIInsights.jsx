@@ -170,24 +170,68 @@ const AIInsights = () => {
       console.error("Conversation analyze error:", err);
       setInsightsError("Conversation analysis service offline. Loading pattern matched mock insights.");
       
+      // --- Old mock fallback commented out to support Field.pdf update ---
+      // const lower = conversation.toLowerCase();
+      // let sentiment = "neutral";
+      // if (lower.includes("great") || lower.includes("love") || lower.includes("excellent")) sentiment = "positive";
+      // if (lower.includes("expensive") || lower.includes("problem") || lower.includes("concern")) sentiment = "negative";
+      // 
+      // setInsightsResult({
+      //   analysis: {
+      //     sentiment,
+      //     client_intent: lower.includes("buying") || lower.includes("finalize") ? "buying_signal" : "interested",
+      //     objections: lower.includes("expensive") ? ["Budget concerns - pricing structure"] : ["Requirements clarity"],
+      //     competitor_mentions: lower.includes("hubspot") ? ["HubSpot alternative comparison"] : [],
+      //     key_insights: [
+      //       "Customer showed active interest in features.",
+      //       "Suggested a follow-up trial window to build trust."
+      //     ]
+      //   },
+      //   risk: {
+      //     label: lower.includes("expensive") ? "Moderate Risk" : "Healthy Deal"
+      //   }
+      // });
+
+      // --- PAIRING AI: New mock fallback matching Field.pdf exactly ---
       const lower = conversation.toLowerCase();
-      let sentiment = "neutral";
-      if (lower.includes("great") || lower.includes("love") || lower.includes("excellent")) sentiment = "positive";
-      if (lower.includes("expensive") || lower.includes("problem") || lower.includes("concern")) sentiment = "negative";
+      let sentiment = "Neutral";
+      let risk_level = "Low";
+      let client_pain_point = "N/A";
+      let primary_objection = "N/A";
+      let secondary_objection = "N/A";
+      let competitor_mentioned = "N/A";
+      let competitor_threat_level = "None";
+      let deal_stage_status = "Opportunity healthy.";
+
+      if (lower.includes("great") || lower.includes("love") || lower.includes("excellent")) {
+        sentiment = "Positive";
+      }
+      if (lower.includes("expensive") || lower.includes("concern") || lower.includes("security") || lower.includes("issue") || lower.includes("problem")) {
+        sentiment = "Negative";
+        risk_level = "High / Critical";
+        client_pain_point = "Security compliance requirements, specifically lack of SOC2 certification and documentation.";
+        primary_objection = '"No SOC2 compliance documentation available before onboarding."';
+        secondary_objection = "Pricing perceived as high relative to the value delivered.";
+        deal_stage_status = "Opportunity at risk / likely lost unless compliance requirements can be addressed immediately.";
+      }
+      if (lower.includes("salesforce") || lower.includes("hubspot") || lower.includes("zoho")) {
+        competitor_mentioned = lower.includes("salesforce") ? "Salesforce" : lower.includes("hubspot") ? "HubSpot" : "Zoho";
+        competitor_threat_level = "Very High — Client is actively evaluating " + competitor_mentioned + " and comparing compliance readiness.";
+      }
 
       setInsightsResult({
         analysis: {
           sentiment,
-          client_intent: lower.includes("buying") || lower.includes("finalize") ? "buying_signal" : "interested",
-          objections: lower.includes("expensive") ? ["Budget concerns - pricing structure"] : ["Requirements clarity"],
-          competitor_mentions: lower.includes("hubspot") ? ["HubSpot alternative comparison"] : [],
-          key_insights: [
-            "Customer showed active interest in features.",
-            "Suggested a follow-up trial window to build trust."
-          ]
+          risk_level,
+          client_pain_point,
+          primary_objection,
+          secondary_objection,
+          competitor_mentioned,
+          competitor_threat_level,
+          deal_stage_status
         },
         risk: {
-          label: lower.includes("expensive") ? "Moderate Risk" : "Healthy Deal"
+          label: risk_level
         }
       });
     } finally {
@@ -598,82 +642,101 @@ const AIInsights = () => {
                   💡 Paste or select a preset and generate insights to view Sentiment, intent, competitor tags, and risk metrics.
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-                  {/* Sentiment and Intent Badging */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {/* --- PAIRING AI COMMENT: Old summary boxes commented out to support Field.pdf layout --- */}
+                  {/*
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
                     <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "14px", padding: "18px" }}>
                       <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "700" }}>SENTIMENT</span>
-                      <div style={{
-                        fontSize: "16px",
-                        fontWeight: "700",
-                        color: insightsResult.analysis?.sentiment === "positive" ? "#10b981" : insightsResult.analysis?.sentiment === "negative" ? "#ef4444" : "#f59e0b",
-                        textTransform: "capitalize",
-                        marginTop: "5px"
-                      }}>
-                        {insightsResult.analysis?.sentiment || "Neutral"}
-                      </div>
+                      <div style={{ fontSize: "16px", fontWeight: "700", color: "#f59e0b" }}>{insightsResult.analysis?.sentiment}</div>
                     </div>
+                    ...
+                  </div>
+                  */}
 
-                    <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "14px", padding: "18px" }}>
-                      <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "700" }}>RISK LEVEL</span>
-                      <div style={{
-                        fontSize: "16px",
-                        fontWeight: "700",
-                        color: insightsResult.risk?.label === "Healthy Deal" ? "#10b981" : insightsResult.risk?.label === "Deal at Risk" ? "#ef4444" : "#f59e0b",
-                        marginTop: "5px"
-                      }}>
-                        {insightsResult.risk?.label || "Moderate Risk"}
-                      </div>
+                  {/* --- PAIRING AI: New vertical table layout matching Field.pdf exactly --- */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", borderBottom: "2px solid #e5e7eb", paddingBottom: "10px", fontWeight: "700", color: "#374151", fontSize: "14px" }}>
+                    <div>Field</div>
+                    <div>Analysis</div>
+                  </div>
+
+                  {/* Sentiment Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", paddingTop: "4px" }}>
+                    <div style={{ fontWeight: "600", color: "#4b5563", fontSize: "13px" }}>Sentiment</div>
+                    <div style={{ display: "flex", alignItems: "center", fontWeight: "700", color: "#111827", fontSize: "14px" }}>
+                      {insightsResult.analysis?.sentiment || "Neutral"}
+                      <span style={{
+                        display: "inline-block",
+                        width: "10px",
+                        height: "10px",
+                        borderRadius: "50%",
+                        backgroundColor: (insightsResult.analysis?.sentiment || "Neutral").toLowerCase() === "positive" ? "#10b981" : (insightsResult.analysis?.sentiment || "Neutral").toLowerCase() === "negative" ? "#ef4444" : "#f59e0b",
+                        marginLeft: "8px"
+                      }}></span>
                     </div>
                   </div>
 
-                  {/* Pain Points objections */}
-                  <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "14px", padding: "18px" }}>
-                    <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "700" }}>CLIENT PAIN POINTS & OBJECTIONS</span>
-                    <div style={{ marginTop: "8px", fontSize: "14px", color: "#111827" }}>
-                      {insightsResult.analysis?.objections && insightsResult.analysis.objections.length > 0 ? (
-                        <ul style={{ margin: 0, paddingLeft: "18px" }}>
-                          {insightsResult.analysis.objections.map((obj, index) => (
-                            <li key={index} style={{ marginBottom: "4px" }}>{obj}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        "No explicit objections detected."
-                      )}
+                  {/* Risk Level Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", paddingTop: "4px" }}>
+                    <div style={{ fontWeight: "600", color: "#4b5563", fontSize: "13px" }}>Risk Level</div>
+                    <div style={{ display: "flex", alignItems: "center", fontWeight: "700", color: "#111827", fontSize: "14px" }}>
+                      {insightsResult.analysis?.risk_level || insightsResult.risk?.label || "Low"}
+                      <span style={{
+                        display: "inline-block",
+                        width: "10px",
+                        height: "10px",
+                        borderRadius: "50%",
+                        backgroundColor: (insightsResult.analysis?.risk_level || insightsResult.risk?.label || "Low").toLowerCase().includes("high") || (insightsResult.analysis?.risk_level || insightsResult.risk?.label || "Low").toLowerCase().includes("critical") ? "#ef4444" : (insightsResult.analysis?.risk_level || insightsResult.risk?.label || "Low").toLowerCase().includes("moderate") ? "#f59e0b" : "#10b981",
+                        marginLeft: "8px"
+                      }}></span>
                     </div>
                   </div>
 
-                  {/* Competitor mentions */}
-                  <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "14px", padding: "18px" }}>
-                    <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "700" }}>COMPETITORS MENTIONED</span>
-                    <div style={{ marginTop: "8px", fontSize: "14px", color: "#111827" }}>
-                      {insightsResult.analysis?.competitor_mentions && insightsResult.analysis.competitor_mentions.length > 0 ? (
-                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "5px" }}>
-                          {insightsResult.analysis.competitor_mentions.map((comp, idx) => (
-                            <span key={idx} style={{ background: "#fee2e2", color: "#ef4444", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", textTransform: "capitalize" }}>
-                              {comp}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        "None mentioned."
-                      )}
+                  {/* Client Pain Point Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", paddingTop: "4px" }}>
+                    <div style={{ fontWeight: "600", color: "#4b5563", fontSize: "13px" }}>Client Pain Point</div>
+                    <div style={{ color: "#1f2937", lineHeight: "1.4", fontSize: "13.5px" }}>
+                      {insightsResult.analysis?.client_pain_point || "N/A"}
                     </div>
                   </div>
 
-                  {/* Key Insights bullets */}
-                  <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "14px", padding: "18px" }}>
-                    <span style={{ fontSize: "11px", color: "#6b7280", fontWeight: "700" }}>KEY INSIGHTS & ACTIONS</span>
-                    <div style={{ marginTop: "8px", fontSize: "14px", color: "#111827" }}>
-                      {insightsResult.analysis?.key_insights && insightsResult.analysis.key_insights.length > 0 ? (
-                        <ul style={{ margin: 0, paddingLeft: "18px" }}>
-                          {insightsResult.analysis.key_insights.map((ins, i) => (
-                            <li key={i} style={{ marginBottom: "6px" }}>{ins}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        "No specific actionable insights derived yet."
-                      )}
+                  {/* Primary Objection Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", paddingTop: "4px" }}>
+                    <div style={{ fontWeight: "600", color: "#4b5563", fontSize: "13px" }}>Primary Objection</div>
+                    <div style={{ color: "#1f2937", lineHeight: "1.4", fontStyle: "italic", fontSize: "13.5px" }}>
+                      {insightsResult.analysis?.primary_objection || "N/A"}
+                    </div>
+                  </div>
+
+                  {/* Secondary Objection Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", paddingTop: "4px" }}>
+                    <div style={{ fontWeight: "600", color: "#4b5563", fontSize: "13px" }}>Secondary Objection</div>
+                    <div style={{ color: "#1f2937", lineHeight: "1.4", fontSize: "13.5px" }}>
+                      {insightsResult.analysis?.secondary_objection || "N/A"}
+                    </div>
+                  </div>
+
+                  {/* Competitor Mentioned Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", paddingTop: "4px" }}>
+                    <div style={{ fontWeight: "600", color: "#4b5563", fontSize: "13px" }}>Competitor Mentioned</div>
+                    <div style={{ color: "#111827", fontWeight: "600", fontSize: "13.5px" }}>
+                      {insightsResult.analysis?.competitor_mentioned || "N/A"}
+                    </div>
+                  </div>
+
+                  {/* Competitor Threat Level Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", paddingTop: "4px" }}>
+                    <div style={{ fontWeight: "600", color: "#4b5563", fontSize: "13px" }}>Competitor Threat Level</div>
+                    <div style={{ color: "#1f2937", lineHeight: "1.4", fontSize: "13.5px" }}>
+                      {insightsResult.analysis?.competitor_threat_level || "N/A"}
+                    </div>
+                  </div>
+
+                  {/* Deal Stage Status Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", paddingBottom: "4px", paddingTop: "4px" }}>
+                    <div style={{ fontWeight: "600", color: "#4b5563", fontSize: "13px" }}>Deal Stage Status</div>
+                    <div style={{ color: "#1f2937", lineHeight: "1.4", fontSize: "13.5px" }}>
+                      {insightsResult.analysis?.deal_stage_status || "N/A"}
                     </div>
                   </div>
                 </div>

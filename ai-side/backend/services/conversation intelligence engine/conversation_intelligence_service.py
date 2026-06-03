@@ -159,10 +159,22 @@ class ConversationIntelligenceService:
             "analysis": ai_analysis,
             "scores": scores,
             "risk": risk,
+            # --- PAIRING AI COMMENT: Old insights structure commented out to support Field.pdf schema ---
+            # "insights": {
+            #     "key_insights": ai_analysis.get("key_insights", []),
+            #     "objections": ai_analysis.get("objections", []),
+            #     "competitor_mentions": ai_analysis.get("competitor_mentions", []),
+            # },
+            # --- PAIRING AI: New insights format aligned with the 8-field schema ---
             "insights": {
-                "key_insights": ai_analysis.get("key_insights", []),
-                "objections": ai_analysis.get("objections", []),
-                "competitor_mentions": ai_analysis.get("competitor_mentions", []),
+                "sentiment": ai_analysis.get("sentiment"),
+                "risk_level": ai_analysis.get("risk_level"),
+                "client_pain_point": ai_analysis.get("client_pain_point"),
+                "primary_objection": ai_analysis.get("primary_objection"),
+                "secondary_objection": ai_analysis.get("secondary_objection"),
+                "competitor_mentioned": ai_analysis.get("competitor_mentioned"),
+                "competitor_threat_level": ai_analysis.get("competitor_threat_level"),
+                "deal_stage_status": ai_analysis.get("deal_stage_status"),
             },
             "metadata": {**metadata, **hydration_meta},
             "analyzed_at": datetime.utcnow().isoformat(),
@@ -472,28 +484,61 @@ class ConversationIntelligenceService:
             raise ValueError(f"Gemini returned invalid JSON: {error}")
 
     def _build_prompt(self, conversation_text: str, source_type: str) -> str:
+        # --- PAIRING AI COMMENT: Old prompt schema commented out to support Field.pdf update ---
+        # return f'''You are an enterprise CRM Conversation Intelligence Engine.
+        # 
+        # Analyze the provided conversation and return strict JSON only.
+        # 
+        # Source type: {source_type}
+        # 
+        # Return EXACTLY this schema:
+        # {{
+        #   "sentiment": "positive | neutral | negative",
+        #   "client_intent": "interested | neutral | objection | competitor_evaluation | buying_signal",
+        #   "objections": ["string"],
+        #   "competitor_mentions": ["string"],
+        #   "key_insights": ["string"]
+        # }}
+        # 
+        # Rules:
+        # - Return only valid JSON.
+        # - Do not use markdown.
+        # - No additional keys.
+        # - Use lowercase enum values exactly as shown.
+        # - If unknown, use neutral sentiment and neutral intent.
+        # - Keep arrays empty when no evidence exists.
+        # 
+        # Conversation:
+        # """
+        # {conversation_text}
+        # """
+        # '''
+
+        # --- PAIRING AI: New prompt schema matching Field.pdf exactly ---
         return f'''You are an enterprise CRM Conversation Intelligence Engine.
 
 Analyze the provided conversation and return strict JSON only.
 
 Source type: {source_type}
 
-Return EXACTLY this schema:
+Return EXACTLY this JSON schema:
 {{
-  "sentiment": "positive | neutral | negative",
-  "client_intent": "interested | neutral | objection | competitor_evaluation | buying_signal",
-  "objections": ["string"],
-  "competitor_mentions": ["string"],
-  "key_insights": ["string"]
+  "sentiment": "Positive | Neutral | Negative",
+  "risk_level": "High / Critical | Moderate | Low",
+  "client_pain_point": "A concise summary of client requirements and core needs or deficiencies (e.g., security compliance details)",
+  "primary_objection": "Direct quote or primary objection raised by client",
+  "secondary_objection": "Secondary objection/concern raised by client",
+  "competitor_mentioned": "Name of competitor mentioned or N/A",
+  "competitor_threat_level": "Threat level assessment (e.g. Very High, High, Moderate, Low, None) and context",
+  "deal_stage_status": "Sales recommendation and stage analysis"
 }}
 
 Rules:
 - Return only valid JSON.
 - Do not use markdown.
 - No additional keys.
-- Use lowercase enum values exactly as shown.
-- If unknown, use neutral sentiment and neutral intent.
-- Keep arrays empty when no evidence exists.
+- If unknown/unspecified, use "Neutral" for sentiment, "Low" for risk_level, and "N/A" for text fields.
+- Keep fields concise and focused on the raw conversation facts.
 
 Conversation:
 """
@@ -502,40 +547,131 @@ Conversation:
 '''
 
     def _sanitize_analysis(self, raw: Dict[str, Any], messages: List[Any], conversation_text: str) -> Dict[str, Any]:
-        sentiment = str(raw.get("sentiment") or "neutral").strip().lower()
-        if sentiment not in ALLOWED_SENTIMENTS:
-            sentiment = "neutral"
+        # --- PAIRING AI COMMENT: Old sanitization commented out to support Field.pdf schema ---
+        # sentiment = str(raw.get("sentiment") or "neutral").strip().lower()
+        # if sentiment not in ALLOWED_SENTIMENTS:
+        #     sentiment = "neutral"
+        # 
+        # client_intent = str(raw.get("client_intent") or "neutral").strip().lower()
+        # if client_intent not in ALLOWED_INTENTS:
+        #     client_intent = "neutral"
+        # 
+        # objections = self._sanitize_string_list(raw.get("objections"))
+        # competitor_mentions = self._sanitize_string_list(raw.get("competitor_mentions"))
+        # key_insights = self._sanitize_string_list(raw.get("key_insights"), max_items=8)
+        # 
+        # if not key_insights:
+        #     key_insights = self._heuristic_key_insights(conversation_text)
+        # 
+        # # Enrich with deterministic detection so noisy LLM output does not drop critical signals.
+        # deterministic_competitors = self._extract_competitor_mentions(conversation_text)
+        # if deterministic_competitors:
+        #     competitor_mentions = self._dedupe_preserve_order(competitor_mentions + deterministic_competitors)
+        # 
+        # deterministic_objections = self._extract_objections(conversation_text)
+        # if deterministic_objections:
+        #     objections = self._dedupe_preserve_order(objections + deterministic_objections)
+        # 
+        # return {
+        #     "sentiment": sentiment,
+        #     "client_intent": client_intent,
+        #     "objections": objections,
+        #     "competitor_mentions": competitor_mentions,
+        #     "key_insights": key_insights,
+        #     "message_metrics": self._derive_message_metrics(messages, conversation_text),
+        # }
 
-        client_intent = str(raw.get("client_intent") or "neutral").strip().lower()
-        if client_intent not in ALLOWED_INTENTS:
-            client_intent = "neutral"
+        # --- PAIRING AI: New sanitization and normalization for Field.pdf schema ---
+        sentiment = str(raw.get("sentiment") or "Neutral").strip().capitalize()
+        if sentiment not in ["Positive", "Neutral", "Negative"]:
+            sentiment = "Neutral"
 
-        objections = self._sanitize_string_list(raw.get("objections"))
-        competitor_mentions = self._sanitize_string_list(raw.get("competitor_mentions"))
-        key_insights = self._sanitize_string_list(raw.get("key_insights"), max_items=8)
+        risk_level = str(raw.get("risk_level") or "Low").strip()
+        if risk_level not in ["High / Critical", "Moderate", "Low"]:
+            # Basic capitalization check fallback
+            if "high" in risk_level.lower() or "critical" in risk_level.lower():
+                risk_level = "High / Critical"
+            elif "moderate" in risk_level.lower():
+                risk_level = "Moderate"
+            else:
+                risk_level = "Low"
 
-        if not key_insights:
-            key_insights = self._heuristic_key_insights(conversation_text)
+        client_pain_point = str(raw.get("client_pain_point") or "N/A").strip()
+        primary_objection = str(raw.get("primary_objection") or "N/A").strip()
+        secondary_objection = str(raw.get("secondary_objection") or "N/A").strip()
+        competitor_mentioned = str(raw.get("competitor_mentioned") or "N/A").strip()
+        competitor_threat_level = str(raw.get("competitor_threat_level") or "N/A").strip()
+        deal_stage_status = str(raw.get("deal_stage_status") or "N/A").strip()
 
-        # Enrich with deterministic detection so noisy LLM output does not drop critical signals.
-        deterministic_competitors = self._extract_competitor_mentions(conversation_text)
-        if deterministic_competitors:
-            competitor_mentions = self._dedupe_preserve_order(competitor_mentions + deterministic_competitors)
+        # Deterministic extraction fallbacks for safety
+        if competitor_mentioned == "N/A" or not competitor_mentioned:
+            comps = self._extract_competitor_mentions(conversation_text)
+            if comps:
+                competitor_mentioned = ", ".join(comps).title()
+                if competitor_threat_level == "N/A":
+                    competitor_threat_level = "Moderate — Competitor mentioned during discussion."
 
-        deterministic_objections = self._extract_objections(conversation_text)
-        if deterministic_objections:
-            objections = self._dedupe_preserve_order(objections + deterministic_objections)
+        if primary_objection == "N/A" or not primary_objection:
+            objs = self._extract_objections(conversation_text)
+            if objs:
+                primary_objection = f"Concern raised regarding: {', '.join(objs)}."
 
         return {
             "sentiment": sentiment,
-            "client_intent": client_intent,
-            "objections": objections,
-            "competitor_mentions": competitor_mentions,
-            "key_insights": key_insights,
+            "risk_level": risk_level,
+            "client_pain_point": client_pain_point,
+            "primary_objection": primary_objection,
+            "secondary_objection": secondary_objection,
+            "competitor_mentioned": competitor_mentioned,
+            "competitor_threat_level": competitor_threat_level,
+            "deal_stage_status": deal_stage_status,
             "message_metrics": self._derive_message_metrics(messages, conversation_text),
         }
 
     def _heuristic_analysis(self, conversation_text: str, messages: List[Any]) -> Dict[str, Any]:
+        # --- PAIRING AI COMMENT: Old heuristic analysis commented out to support Field.pdf schema ---
+        # lower_text = conversation_text.lower()
+        # 
+        # positive_markers = ["great", "good", "excellent", "love", "happy", "works", "interested", "proceed"]
+        # negative_markers = ["issue", "problem", "concern", "expensive", "delay", "not happy", "bad", "difficult", "stuck"]
+        # 
+        # positive_score = sum(lower_text.count(marker) for marker in positive_markers)
+        # negative_score = sum(lower_text.count(marker) for marker in negative_markers)
+        # 
+        # if negative_score > positive_score + 1:
+        #     sentiment = "negative"
+        # elif positive_score > negative_score + 1:
+        #     sentiment = "positive"
+        # else:
+        #     sentiment = "neutral"
+        # 
+        # competitor_mentions = self._extract_competitor_mentions(conversation_text)
+        # objections = self._extract_objections(conversation_text)
+        # 
+        # buying_signal_markers = ["send contract", "finalize", "ready to buy", "next steps", "sign", "purchase", "go ahead"]
+        # interest_markers = ["demo", "interested", "pricing", "proposal", "timeline", "trial"]
+        # 
+        # if any(marker in lower_text for marker in buying_signal_markers):
+        #     client_intent = "buying_signal"
+        # elif competitor_mentions:
+        #     client_intent = "competitor_evaluation"
+        # elif objections:
+        #     client_intent = "objection"
+        # elif any(marker in lower_text for marker in interest_markers):
+        #     client_intent = "interested"
+        # else:
+        #     client_intent = "neutral"
+        # 
+        # return {
+        #     "sentiment": sentiment,
+        #     "client_intent": client_intent,
+        #     "objections": objections,
+        #     "competitor_mentions": competitor_mentions,
+        #     "key_insights": self._heuristic_key_insights(conversation_text),
+        #     "message_metrics": self._derive_message_metrics(messages, conversation_text),
+        # }
+
+        # --- PAIRING AI: New heuristic analysis for Field.pdf schema ---
         lower_text = conversation_text.lower()
 
         positive_markers = ["great", "good", "excellent", "love", "happy", "works", "interested", "proceed"]
@@ -545,35 +681,55 @@ Conversation:
         negative_score = sum(lower_text.count(marker) for marker in negative_markers)
 
         if negative_score > positive_score + 1:
-            sentiment = "negative"
+            sentiment = "Negative"
         elif positive_score > negative_score + 1:
-            sentiment = "positive"
+            sentiment = "Positive"
         else:
-            sentiment = "neutral"
+            sentiment = "Neutral"
 
         competitor_mentions = self._extract_competitor_mentions(conversation_text)
         objections = self._extract_objections(conversation_text)
 
-        buying_signal_markers = ["send contract", "finalize", "ready to buy", "next steps", "sign", "purchase", "go ahead"]
-        interest_markers = ["demo", "interested", "pricing", "proposal", "timeline", "trial"]
-
-        if any(marker in lower_text for marker in buying_signal_markers):
-            client_intent = "buying_signal"
-        elif competitor_mentions:
-            client_intent = "competitor_evaluation"
-        elif objections:
-            client_intent = "objection"
-        elif any(marker in lower_text for marker in interest_markers):
-            client_intent = "interested"
+        # Risk level determination
+        if competitor_mentions and objections:
+            risk_level = "High / Critical"
+        elif competitor_mentions or objections:
+            risk_level = "Moderate"
         else:
-            client_intent = "neutral"
+            risk_level = "Low"
+
+        # Map details
+        client_pain_point = "N/A"
+        if objections:
+            client_pain_point = f"Customer concerns regarding {', '.join(objections)}."
+        
+        primary_objection = "N/A"
+        secondary_objection = "N/A"
+        if len(objections) > 0:
+            primary_objection = f"Objection on: {objections[0]}"
+        if len(objections) > 1:
+            secondary_objection = f"Secondary objection on: {objections[1]}"
+
+        competitor_mentioned = ", ".join(competitor_mentions).title() if competitor_mentions else "N/A"
+        competitor_threat_level = "None"
+        if competitor_mentions:
+            competitor_threat_level = "Very High — Client actively comparing alternative vendors." if "salesforce" in lower_text or "hubspot" in lower_text else "Moderate"
+
+        deal_stage_status = "Opportunity healthy."
+        if risk_level == "High / Critical":
+            deal_stage_status = "Opportunity at risk due to critical compliance/objection issues."
+        elif risk_level == "Moderate":
+            deal_stage_status = "Opportunity requires attention regarding objections or competitors."
 
         return {
             "sentiment": sentiment,
-            "client_intent": client_intent,
-            "objections": objections,
-            "competitor_mentions": competitor_mentions,
-            "key_insights": self._heuristic_key_insights(conversation_text),
+            "risk_level": risk_level,
+            "client_pain_point": client_pain_point,
+            "primary_objection": primary_objection,
+            "secondary_objection": secondary_objection,
+            "competitor_mentioned": competitor_mentioned,
+            "competitor_threat_level": competitor_threat_level,
+            "deal_stage_status": deal_stage_status,
             "message_metrics": self._derive_message_metrics(messages, conversation_text),
         }
 
@@ -639,10 +795,65 @@ Conversation:
         }
 
     def _compute_scores(self, analysis: Dict[str, Any], messages: List[Any], conversation_text: str) -> Dict[str, int]:
-        sentiment = analysis.get("sentiment", "neutral")
-        intent = analysis.get("client_intent", "neutral")
-        objections = analysis.get("objections", [])
-        competitor_mentions = analysis.get("competitor_mentions", [])
+        # --- PAIRING AI COMMENT: Old scoring commented out to support Field.pdf schema ---
+        # sentiment = analysis.get("sentiment", "neutral")
+        # intent = analysis.get("client_intent", "neutral")
+        # objections = analysis.get("objections", [])
+        # competitor_mentions = analysis.get("competitor_mentions", [])
+        # 
+        # intent_score = self.intent_base_scores.get(intent, 52)
+        # 
+        # if sentiment == "positive":
+        #     intent_score += self.scoring_config.positive_sentiment_bonus
+        # elif sentiment == "negative":
+        #     intent_score -= self.scoring_config.negative_sentiment_penalty
+        # 
+        # intent_score -= min(len(objections), 3) * self.scoring_config.objection_penalty_per_item
+        # intent_score -= min(len(competitor_mentions), 2) * self.scoring_config.competitor_penalty_per_item
+        # 
+        # if intent == "buying_signal" and sentiment != "negative":
+        #     intent_score += 5
+        # 
+        # intent_score = int(self._clamp(intent_score, 0, 100))
+        # 
+        # message_metrics = analysis.get("message_metrics") or self._derive_message_metrics(messages, conversation_text)
+        # engagement_score = self._compute_engagement_score(message_metrics)
+        # balance_score = self._compute_balance_score(message_metrics)
+        # quality_score = self._compute_quality_score(message_metrics)
+        # 
+        # rep_score = (
+        #     engagement_score * self.scoring_config.engagement_weight
+        #     + balance_score * self.scoring_config.balance_weight
+        #     + quality_score * self.scoring_config.quality_weight
+        # )
+        # 
+        # return {
+        #     "client_intent_score": int(self._clamp(round(intent_score), 0, 100)),
+        #     "sales_rep_performance_score": int(self._clamp(round(rep_score), 0, 100)),
+        #     "engagement_score": int(self._clamp(round(engagement_score), 0, 100)),
+        #     "balance_score": int(self._clamp(round(balance_score), 0, 100)),
+        #     "response_quality_score": int(self._clamp(round(quality_score), 0, 100)),
+        # }
+
+        # --- PAIRING AI: New scoring calculation aligned with the 8-field schema ---
+        sentiment = str(analysis.get("sentiment") or "Neutral").lower()
+        risk_level = str(analysis.get("risk_level") or "Low")
+        
+        # Map an implicit intent for scoring backward compatibility
+        competitor_val = str(analysis.get("competitor_mentioned") or "N/A")
+        has_competitor = competitor_val != "N/A" and competitor_val != ""
+        
+        prim_obj = str(analysis.get("primary_objection") or "N/A")
+        has_objection = prim_obj != "N/A" and prim_obj != ""
+
+        if risk_level == "High / Critical":
+            intent = "objection"
+        elif has_competitor:
+            intent = "competitor_evaluation"
+        elif sentiment == "positive":
+            intent = "buying_signal"
+        else:
+            intent = "neutral"
 
         intent_score = self.intent_base_scores.get(intent, 52)
 
@@ -651,11 +862,15 @@ Conversation:
         elif sentiment == "negative":
             intent_score -= self.scoring_config.negative_sentiment_penalty
 
-        intent_score -= min(len(objections), 3) * self.scoring_config.objection_penalty_per_item
-        intent_score -= min(len(competitor_mentions), 2) * self.scoring_config.competitor_penalty_per_item
+        # Deduct for objections and competitors
+        if has_objection:
+            intent_score -= self.scoring_config.objection_penalty_per_item
+            sec_obj = str(analysis.get("secondary_objection") or "N/A")
+            if sec_obj != "N/A" and sec_obj != "":
+                intent_score -= self.scoring_config.objection_penalty_per_item
 
-        if intent == "buying_signal" and sentiment != "negative":
-            intent_score += 5
+        if has_competitor:
+            intent_score -= self.scoring_config.competitor_penalty_per_item
 
         intent_score = int(self._clamp(intent_score, 0, 100))
 
@@ -722,20 +937,61 @@ Conversation:
         return (word_score * 0.7) + (question_score * 0.3)
 
     def _detect_risk(self, analysis: Dict[str, Any], scores: Dict[str, int]) -> Dict[str, Any]:
-        sentiment = analysis.get("sentiment", "neutral")
-        objections = analysis.get("objections", [])
-        competitor_mentions = analysis.get("competitor_mentions", [])
+        # --- PAIRING AI COMMENT: Old risk detection commented out to support Field.pdf schema ---
+        # sentiment = analysis.get("sentiment", "neutral")
+        # objections = analysis.get("objections", [])
+        # competitor_mentions = analysis.get("competitor_mentions", [])
+        # 
+        # engagement_score = int(scores.get("engagement_score", 0))
+        # 
+        # flags: List[str] = []
+        # severity = 0
+        # 
+        # if competitor_mentions:
+        #     flags.append("Competitor mentioned by client")
+        #     severity += 2
+        # 
+        # if sentiment == "negative" and objections:
+        #     flags.append("Negative sentiment with objections")
+        #     severity += 2
+        # 
+        # if engagement_score < self.scoring_config.low_engagement_threshold:
+        #     flags.append("Low engagement signal detected")
+        #     severity += 1
+        # 
+        # if severity >= 3:
+        #     label = "Deal at Risk"
+        # elif severity >= 1:
+        #     label = "Moderate Risk"
+        # else:
+        #     label = "Healthy Deal"
+        # 
+        # return {
+        #     "label": label,
+        #     "flags": flags,
+        #     "risk_score": int(self._clamp(severity * 30, 0, 100)),
+        # }
+
+        # --- PAIRING AI: New risk detection aligned with the 8-field schema ---
+        sentiment = str(analysis.get("sentiment") or "Neutral").lower()
+        risk_level = str(analysis.get("risk_level") or "Low")
+        
+        competitor_val = str(analysis.get("competitor_mentioned") or "N/A")
+        has_competitor = competitor_val != "N/A" and competitor_val != ""
+        
+        prim_obj = str(analysis.get("primary_objection") or "N/A")
+        has_objection = prim_obj != "N/A" and prim_obj != ""
 
         engagement_score = int(scores.get("engagement_score", 0))
 
         flags: List[str] = []
         severity = 0
 
-        if competitor_mentions:
+        if has_competitor:
             flags.append("Competitor mentioned by client")
             severity += 2
 
-        if sentiment == "negative" and objections:
+        if sentiment == "negative" and has_objection:
             flags.append("Negative sentiment with objections")
             severity += 2
 
@@ -743,17 +999,27 @@ Conversation:
             flags.append("Low engagement signal detected")
             severity += 1
 
-        if severity >= 3:
-            label = "Deal at Risk"
-        elif severity >= 1:
-            label = "Moderate Risk"
-        else:
-            label = "Healthy Deal"
+        # Use the risk_level returned from the analysis as the label primary source
+        label = risk_level
+        if label not in ["High / Critical", "Moderate", "Low"]:
+            if severity >= 3:
+                label = "High / Critical"
+            elif severity >= 1:
+                label = "Moderate"
+            else:
+                label = "Low"
+
+        # Calculate a corresponding numerical risk score
+        risk_score_val = severity * 30
+        if label == "High / Critical" and risk_score_val < 70:
+            risk_score_val = 85
+        elif label == "Moderate" and (risk_score_val < 30 or risk_score_val >= 70):
+            risk_score_val = 50
 
         return {
             "label": label,
             "flags": flags,
-            "risk_score": int(self._clamp(severity * 30, 0, 100)),
+            "risk_score": int(self._clamp(risk_score_val, 0, 100)),
         }
 
     async def _store_record(self, output: Dict[str, Any], conversation_text: str) -> Optional[str]:
