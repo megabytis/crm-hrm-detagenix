@@ -26,34 +26,113 @@ def _safe_float(value: Any, fallback: float = 0.0) -> float:
 
 
 def _pick_best_bucket(frame: pd.DataFrame) -> Tuple[str, float]:
-    ranked = frame.sort_values(
-        by=["reply_rate", "avg_response_time_hours", "interactions"],
-        ascending=[False, True, False],
-    )
-    top = ranked.iloc[0]
-    return str(top.name), _safe_float(top.get("reply_rate"), 0.0)
+    frame = frame.copy()
 
+    # Recover reply count from rate and interaction count
+    replies = frame["reply_rate"] * frame["interactions"]
+
+    # Bayesian smoothing — scale prior to total data size so it doesn't
+    # overwhelm small datasets (e.g. 3 interactions).
+    # A fixed prior of 3+3 would flatten Tuesday(2 replies) vs Wednesday(1 reply)
+    # into near-identical scores. Instead we use a prior of 1 success + 1 failure,
+    # which is weak enough to let real signal dominate even with few data points.
+    PRIOR_SUCCESS = 1
+    PRIOR_FAILURE = 1
+
+    frame["smoothed_reply_rate"] = (
+        replies + PRIOR_SUCCESS
+    ) / (
+        frame["interactions"] + PRIOR_SUCCESS + PRIOR_FAILURE
+    )
+
+    # Normalize response speed — replace inf (days with no replies) with NaN
+    # so they don't poison the max and collapse all speed scores to 0.
+    finite_times = frame["avg_response_time_hours"].replace(float("inf"), pd.NA)
+    max_time = finite_times.max()
+
+    if pd.isna(max_time) or max_time == 0:
+        frame["speed_score"] = 0.5
+    else:
+        # Days with no reply data get a neutral speed score (0.5) rather than 0,
+        # so they don't get unfairly penalised when reply rate already captures success.
+        frame["speed_score"] = finite_times.apply(
+            lambda t: (1 - t / max_time) if pd.notna(t) else 0.5
+        )
+
+    # Normalize interaction volume
+    max_interactions = frame["interactions"].max()
+    frame["volume_score"] = (
+        frame["interactions"] / max_interactions
+        if max_interactions > 0
+        else 0
+    )
+
+    # Final weighted score — reply rate is the primary signal (75%).
+    # Speed and volume are secondary hints, not enough to override a clear
+    # reply-rate winner (was 60/20/20, which let speed flip the result).
+    frame["score"] = (
+        frame["smoothed_reply_rate"] * 0.75
+        + frame["speed_score"] * 0.15
+        + frame["volume_score"] * 0.10
+    )
+
+    ranked = frame.sort_values(
+        by=["score", "interactions"],
+        ascending=[False, False],
+    )
+
+    top = ranked.iloc[0]
+
+    return (
+        str(top.name),
+        float(top["smoothed_reply_rate"]),
+    )
 
 def _build_candidate_hours(df: pd.DataFrame) -> list[int]:
-    replied_hours = (
-        df.loc[df["responded"], "reply_hour"]
-        .dropna()
-        .astype(int)
-        .tolist()
+    hour_stats = (
+        df.groupby("sent_hour")
+        .agg(
+            interactions=("responded", "size"),
+            reply_rate=("responded", "mean"),
+        )
     )
-    if replied_hours:
+
+    if len(hour_stats) >= 3:
+        replies = (
+            hour_stats["reply_rate"]
+            * hour_stats["interactions"]
+        )
+
+        hour_stats["score"] = (
+            replies + 2
+        ) / (
+            hour_stats["interactions"] + 4
+        )
+
+        top_hours = (
+            hour_stats
+            .sort_values("score", ascending=False)
+            .head(5)
+            .index
+            .tolist()
+        )
+
         expanded = set()
-        for hour in replied_hours:
-            expanded.add(hour)
-            expanded.add((hour - 1) % 24)
-            expanded.add((hour + 1) % 24)
+
+        for hour in top_hours:
+            expanded.add(int(hour))
+            expanded.add((int(hour) - 1) % 24)
+            expanded.add((int(hour) + 1) % 24)
+
         return sorted(expanded)
 
-    sent_hours = df["sent_hour"].dropna().astype(int).unique().tolist()
-    if sent_hours:
-        return sorted(set(sent_hours))
-
-    return list(range(8, 19))
+    return sorted(
+        df["sent_hour"]
+        .dropna()
+        .astype(int)
+        .unique()
+        .tolist()
+    ) or list(range(8, 19))
 
 
 def _typical_reply_hour(df: pd.DataFrame) -> int:

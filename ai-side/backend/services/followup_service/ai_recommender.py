@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 
 def _format_hour_label(hour_24: int) -> str:
@@ -50,6 +53,12 @@ def _confidence_percent(insights: Dict[str, Any]) -> float:
     if isinstance(reliability, (float, int)):
         return max(0.0, min(1.0, float(reliability))) * 100
 
+    logger.warning(
+        "Could not determine confidence for insights dict — "
+        "both 'model_confidence' and 'data_reliability' are missing or invalid. "
+        "Returning 0.0%%. Insights keys received: %s",
+        list(insights.keys()),
+    )
     return 0.0
 
 
