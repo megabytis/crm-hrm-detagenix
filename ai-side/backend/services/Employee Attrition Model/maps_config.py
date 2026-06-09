@@ -1,0 +1,82 @@
+LABEL_MAP = {
+    # --- Numeric / engineered features ---
+    "standardscaler__WorkPressure":            "High overtime / poor work-life balance",
+    "standardscaler__CommuteStress":           "High commute stress with overtime",
+    "standardscaler__PromotionDelay":          "Promotion delay",
+    "standardscaler__SalaryGrowth":            "Low salary growth",
+    "standardscaler__CareerStagnation":        "Career stagnation",
+    "standardscaler__Stability":               "Long company tenure",
+    "standardscaler__IncomePerLevel":          "Low income for job level",
+    "standardscaler__ManagerFeedback":         "Low manager feedback",
+    "standardscaler__JobSatisfaction":         "Low job satisfaction",
+    "standardscaler__EnvironmentSatisfaction": "Poor environment satisfaction",
+    "standardscaler__StockOptionLevel":        "No / low stock options",
+    "standardscaler__JobInvolvement":          "Low job involvement",
+    "standardscaler__LeaveFrequency":          "High leave frequency",
+    "standardscaler__Age":                     "Younger age (higher mobility)",
+    "standardscaler__YearsWithCurrManager":    "Short time with current manager",
+    "standardscaler__NumCompaniesWorked":      "Worked at many companies",
+    "standardscaler__TrainingTimesLastYear":   "Low training opportunities",
+    "standardscaler__RelationshipSatisfaction":"Low relationship satisfaction",
+    "standardscaler__DailyRate":               "Low daily rate",
+    "standardscaler__HourlyRate":              "Low hourly rate",
+    "standardscaler__MonthlyRate":             "Low monthly rate",
+    "standardscaler__Education":               "Lower education level",
+    "standardscaler__PerformanceRating":       "Low performance rating",
+    # --- One-hot: Business Travel ---
+    "onehotencoder__BusinessTravel_Travel_Frequently": "Frequent business travel",
+    "onehotencoder__BusinessTravel_Travel_Rarely":     "Rarely travels for business",
+    "onehotencoder__BusinessTravel_Non-Travel":        "No business travel",
+    # --- One-hot: Department ---
+    "onehotencoder__Department_Sales":                 "Sales department",
+    "onehotencoder__Department_Human Resources":       "HR department",
+    "onehotencoder__Department_Research & Development":"R&D department",
+    # --- One-hot: Education Field ---
+    "onehotencoder__EducationField_Human Resources":   "HR education background",
+    "onehotencoder__EducationField_Life Sciences":     "Life Sciences background",
+    "onehotencoder__EducationField_Marketing":         "Marketing background",
+    "onehotencoder__EducationField_Medical":           "Medical background",
+    "onehotencoder__EducationField_Other":             "Other education background",
+    "onehotencoder__EducationField_Technical Degree":  "Technical Degree background",
+    # --- One-hot: Gender ---
+    "onehotencoder__Gender_Male":                      "Male gender",
+    "onehotencoder__Gender_Female":                    "Female gender",
+    # --- One-hot: Job Role ---
+    "onehotencoder__JobRole_Healthcare Representative":"Healthcare Representative role",
+    "onehotencoder__JobRole_Human Resources":          "HR role",
+    "onehotencoder__JobRole_Laboratory Technician":    "Lab Technician role",
+    "onehotencoder__JobRole_Manager":                  "Manager role",
+    "onehotencoder__JobRole_Manufacturing Director":   "Manufacturing Director role",
+    "onehotencoder__JobRole_Research Director":        "Research Director role",
+    "onehotencoder__JobRole_Research Scientist":       "Research Scientist role",
+    "onehotencoder__JobRole_Sales Executive":          "Sales Executive role",
+    "onehotencoder__JobRole_Sales Representative":     "Sales Representative role",
+    # --- One-hot: Marital Status ---
+    "onehotencoder__MaritalStatus_Single":             "Single (higher mobility)",
+    "onehotencoder__MaritalStatus_Married":            "Married (stable)",
+    "onehotencoder__MaritalStatus_Divorced":           "Divorced",
+}
+
+# Suggested actions mapped to each risk label
+ACTION_MAP = {
+    "High overtime / poor work-life balance":   "Discuss workload redistribution and offer flexible working hours",
+    "High commute stress with overtime":         "Explore remote work or hybrid arrangements to reduce commute burden",
+    "Promotion delay":                           "Schedule a career growth discussion and define a promotion timeline",
+    "Low salary growth":                         "Review compensation and benchmark against market rates",
+    "Career stagnation":                         "Offer new responsibilities, lateral moves, or upskilling programs",
+    "Low manager feedback":                      "Facilitate regular 1:1s and manager-employee alignment sessions",
+    "Low job satisfaction":                      "Conduct a stay interview to understand pain points and adjust role",
+    "Poor environment satisfaction":             "Investigate team dynamics and improve workplace conditions",
+    "No / low stock options":                    "Consider adding stock options or a long-term incentive plan",
+    "Frequent business travel":                  "Review travel load and explore remote-work alternatives",
+    "Single (higher mobility)":                  "Strengthen engagement through mentorship and team bonding",
+    "Short time with current manager":           "Encourage manager to build rapport through structured check-ins",
+    "High leave frequency":                      "Conduct a proactive stay interview to address underlying concerns",
+    "Worked at many companies":                  "Offer role stability signals such as long-term projects or promotions",
+    "Low job involvement":                       "Assign high-impact projects to increase ownership and engagement",
+    "Low training opportunities":                "Enroll employee in relevant training or certification programs",
+    "Younger age (higher mobility)":             "Invest in career development plans to build long-term commitment",
+    "Low income for job level":                  "Review pay-grade alignment and address any compensation gaps",
+}
+
+DEFAULT_ACTION = "Continue regular check-ins and maintain current engagement practices"

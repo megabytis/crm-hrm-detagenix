@@ -22,6 +22,7 @@ from services.sales_forecasting import generate_sales_forecast_report
 import importlib.util
 from pathlib import Path
 from dotenv import load_dotenv
+import pandas as pd
 
 # Load environment variables from ai-side/.env
 backend_dir = Path(__file__).resolve().parent
@@ -189,10 +190,108 @@ class ConversationIntelligenceRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     persist: bool = True
 
+class EmployeeInput(BaseModel):
+    # Identity (optional, for display only)
+    name: Optional[str] = Field(default="Employee", description="Employee name for display")
+
+    # Categorical fields
+    BusinessTravel: str = Field(..., examples=["Travel_Frequently", "Travel_Rarely", "Non-Travel"])
+    Department: str = Field(..., examples=["Sales", "Research & Development", "Human Resources"])
+    EducationField: str = Field(..., examples=["Life Sciences", "Medical", "Marketing", "Technical Degree", "Human Resources", "Other"])
+    Gender: str = Field(..., examples=["Male", "Female"])
+    JobRole: str = Field(..., examples=["Sales Executive", "Research Scientist", "Manager"])
+    MaritalStatus: str = Field(..., examples=["Single", "Married", "Divorced"])
+
+    # Numeric fields
+    Age: int
+    DailyRate: int
+    Education: int = Field(..., ge=1, le=5)
+    EnvironmentSatisfaction: int = Field(..., ge=1, le=4)
+    HourlyRate: int
+    JobInvolvement: int = Field(..., ge=1, le=4)
+    JobSatisfaction: int = Field(..., ge=1, le=4)
+    MonthlyRate: int
+    NumCompaniesWorked: int
+    PerformanceRating: int = Field(..., ge=1, le=4)
+    RelationshipSatisfaction: int = Field(..., ge=1, le=4)
+    StockOptionLevel: int = Field(..., ge=0, le=3)
+    TrainingTimesLastYear: int
+    YearsWithCurrManager: int
+    LeaveFrequency: float
+    ManagerFeedback: float = Field(..., ge=0.0, le=1.0)
+
+    # Feature-engineered source fields
+    PercentSalaryHike: int
+    YearsAtCompany: int
+    YearsSinceLastPromotion: int
+    OverTime: int = Field(..., ge=0, le=1, description="1 = Yes, 0 = No")
+    WorkLifeBalance: int = Field(..., ge=1, le=4)
+    YearsInCurrentRole: int
+    TotalWorkingYears: int
+    MonthlyIncome: int
+    JobLevel: int = Field(..., ge=1, le=5)
+    DistanceFromHome: int
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "Arjun Singh",
+                "BusinessTravel": "Travel_Frequently",
+                "Department": "Sales",
+                "EducationField": "Marketing",
+                "Gender": "Male",
+                "JobRole": "Sales Executive",
+                "MaritalStatus": "Single",
+                "Age": 26,
+                "DailyRate": 400,
+                "Education": 2,
+                "EnvironmentSatisfaction": 1,
+                "HourlyRate": 45,
+                "JobInvolvement": 2,
+                "JobSatisfaction": 1,
+                "MonthlyRate": 9000,
+                "NumCompaniesWorked": 3,
+                "PerformanceRating": 3,
+                "RelationshipSatisfaction": 2,
+                "StockOptionLevel": 0,
+                "TrainingTimesLastYear": 1,
+                "YearsWithCurrManager": 0,
+                "LeaveFrequency": 0.15,
+                "ManagerFeedback": 0.40,
+                "PercentSalaryHike": 10,
+                "YearsAtCompany": 1,
+                "YearsSinceLastPromotion": 1,
+                "OverTime": 1,
+                "WorkLifeBalance": 1,
+                "YearsInCurrentRole": 0,
+                "TotalWorkingYears": 2,
+                "MonthlyIncome": 2000,
+                "JobLevel": 1,
+                "DistanceFromHome": 25,
+            }
+        }
+    }
+
+
+class FactorDetail(BaseModel):
+    label: str
+    score: float
+
+class PredictionResponse(BaseModel):
+    name: str
+    attrition_risk_pct: float = Field(..., description="Attrition probability as a percentage (0–100)")
+    prediction: int = Field(..., description="1 = Likely to Leave, 0 = Likely to Stay")
+    prediction_label: str = Field(..., description="Human-readable prediction label")
+    reason: str = Field(..., description="Top reasons driving the prediction")
+    suggested_actions: List[str] = Field(..., description="Recommended HR interventions")
+    risk_drivers: List[FactorDetail] = Field(..., description="Top 5 factors pushing toward attrition (model-driven)")
+    protective_factors: List[FactorDetail] = Field(..., description="Top 5 factors pushing toward retention (model-driven)")
+
 _cached_auth_service = None
 _lead_enrichment_modules = None
 _conversation_intelligence_service = None
 _conversion_lead_scoring_modules = None
+_attrition_resources = None
 
 # API Routes
 @app.get("/", summary="Health Check")
@@ -266,6 +365,226 @@ def get_catboost_resources():
             raise RuntimeError(f"Gemini LLM failed to initialize: {e}")
             
     return _catboost_model, _catboost_llm
+
+def get_attrition_resources():
+    """
+    Lazy loader for attrition model artifacts.
+    Loads once and caches globally — same pattern as get_catboost_resources().
+    Expects these files alongside main.py (or configure paths via env vars):
+        - attrition_model.pkl
+        - threshold.json   → {"threshold": 0.xx}
+        - columns.json     → list of column names after feature engineering
+    """
+    global _attrition_resources
+    if _attrition_resources is not None:
+        return _attrition_resources
+
+    try:
+        import joblib
+        import warnings
+        warnings.filterwarnings("ignore")
+
+        attrition_dir  = Path(__file__).resolve().parent /"services" / "Employee Attrition model"
+        model_path     = Path(os.getenv("ATTRITION_MODEL_PATH",     attrition_dir / "attrition_model.pkl"))
+        threshold_path = Path(os.getenv("ATTRITION_THRESHOLD_PATH", attrition_dir / "threshold.json"))
+        columns_path   = Path(os.getenv("ATTRITION_COLUMNS_PATH",   attrition_dir / "columns.json"))
+        maps_cfg = _load_module_from_path("maps_config", attrition_dir / "maps_config.py")
+
+        model = joblib.load(model_path)
+
+        with open(threshold_path, "r") as f:
+            threshold = json.load(f)["threshold"]
+
+        with open(columns_path, "r") as f:
+            columns = json.load(f)
+
+        preprocessor   = model.named_steps["preprocessor"]
+        logistic_model = model.named_steps["model"]
+        feature_names  = list(preprocessor.get_feature_names_out())
+        coefs          = logistic_model.coef_[0]
+
+        _attrition_resources = {
+            "model":         model,
+            "threshold":     threshold,
+            "columns":       columns,
+            "preprocessor":  preprocessor,
+            "feature_names": feature_names,
+            "coefs":         coefs,
+            "LABEL_MAP":     maps_cfg.LABEL_MAP,
+            "ACTION_MAP":    maps_cfg.ACTION_MAP,
+            "DEFAULT_ACTION": maps_cfg.DEFAULT_ACTION,
+        }
+
+        logging.info("✅ Attrition model artifacts loaded successfully.")
+        return _attrition_resources
+
+    except FileNotFoundError as e:
+        logging.error(f"Attrition model artifact not found: {e}")
+        raise RuntimeError(f"Attrition model artifact missing: {e}")
+    except Exception as e:
+        logging.error(f"Failed to load attrition model: {e}", exc_info=True)
+        raise RuntimeError(f"Attrition model failed to load: {e}")
+
+
+def _attrition_engineer_features(df):
+    """
+    Feature engineering — must exactly match what was used during training.
+    Derived columns are created, then raw source columns are dropped.
+    """
+    df = df.copy()
+    df["SalaryGrowth"]     = df["PercentSalaryHike"] / (df["YearsAtCompany"] + 1)
+    df["PromotionDelay"]   = df["YearsSinceLastPromotion"] / (df["YearsAtCompany"] + 1)
+    df["WorkPressure"]     = df["OverTime"] * (4 - df["WorkLifeBalance"])
+    df["CareerStagnation"] = (df["YearsInCurrentRole"] + df["YearsSinceLastPromotion"]) / (df["TotalWorkingYears"] + 1)
+    df["Stability"]        = df["YearsAtCompany"] / (df["TotalWorkingYears"] + 1)
+    df["IncomePerLevel"]   = df["MonthlyIncome"] / (df["JobLevel"] + 1)
+    df["CommuteStress"]    = df["DistanceFromHome"] * df["OverTime"]
+    df.drop([
+        "PercentSalaryHike", "YearsAtCompany", "YearsSinceLastPromotion",
+        "OverTime", "WorkLifeBalance", "YearsInCurrentRole",
+        "TotalWorkingYears", "MonthlyIncome", "JobLevel", "DistanceFromHome",
+    ], axis=1, inplace=True)
+    return df
+
+
+def _attrition_get_contributions(df_aligned, resources):
+    """
+    Model-driven contribution scoring.
+    contribution_i = transformed_value_i * coef_i
+      +ve → pushes model toward LEAVE (risk driver)
+      -ve → pushes model toward STAY  (protective factor)
+    Returns two lists of FactorDetail sorted by contribution magnitude.
+    """
+
+    import pandas as pd
+    LABEL_MAP     = resources["LABEL_MAP"]
+
+    X_transformed = resources["preprocessor"].transform(df_aligned)
+    contributions = X_transformed[0] * resources["coefs"]
+
+    contrib_pairs = list(zip(resources["feature_names"], contributions))
+
+    risk = [
+        FactorDetail(label=LABEL_MAP.get(f, f), score=round(float(c), 4))
+        for f, c in contrib_pairs if c > 0.05
+    ]
+    risk.sort(key=lambda x: -x.score)
+
+    protect = [
+        FactorDetail(label=LABEL_MAP.get(f, f), score=round(float(abs(c)), 4))
+        for f, c in contrib_pairs if c < -0.05
+    ]
+    protect.sort(key=lambda x: -x.score)
+
+    return risk, protect
+
+
+def _run_attrition_prediction(payload: "EmployeeInput") -> "PredictionResponse":
+    """
+    Core prediction logic — shared by single and batch endpoints.
+    Extracted so the batch route doesn't duplicate code.
+    """
+    import pandas as pd
+    resources = get_attrition_resources()
+
+    ACTION_MAP    = resources["ACTION_MAP"]
+    DEFAULT_ACTION = resources["DEFAULT_ACTION"]
+
+    sample  = payload.model_dump(exclude={"name"})
+    df      = pd.DataFrame([sample])
+    df_eng  = _attrition_engineer_features(df)
+    df_ali  = df_eng.reindex(columns=resources["columns"], fill_value=0)
+
+    prob  = float(resources["model"].predict_proba(df_ali)[:, 1][0])
+    pred  = int(prob >= resources["threshold"])
+
+    risk_drivers, protect_factors = _attrition_get_contributions(df_ali, resources)
+
+    # Reason string: top 2 contributing factors
+    if pred == 1:
+        top_labels = [r.label for r in risk_drivers[:2]]
+        reason     = " + ".join(top_labels) if top_labels else "Multiple combined risk signals"
+    else:
+        top_labels = [p.label for p in protect_factors[:2]]
+        reason     = " + ".join(top_labels) if top_labels else "Low overall risk profile"
+
+    # Suggested actions: up to 2 from top risk drivers
+    actions: List[str] = []
+    if pred == 1 and risk_drivers:
+        a1 = ACTION_MAP.get(risk_drivers[0].label)
+        if a1:
+            actions.append(a1)
+        if len(risk_drivers) > 1:
+            a2 = ACTION_MAP.get(risk_drivers[1].label)
+            if a2 and a2 != a1:
+                actions.append(a2)
+    if not actions:
+        actions.append(DEFAULT_ACTION)
+
+    return PredictionResponse(
+        name=payload.name,
+        attrition_risk_pct=round(prob * 100, 1),
+        prediction=pred,
+        prediction_label="⚠️ LIKELY TO LEAVE" if pred == 1 else "✅ LIKELY TO STAY",
+        reason=reason,
+        suggested_actions=actions,
+        risk_drivers=risk_drivers[:5],
+        protective_factors=protect_factors[:5],
+    )
+
+
+@app.post("/attrition/predict", response_model=PredictionResponse, tags=["Attrition"], summary="Predict Employee Attrition Risk",)
+async def attrition_predict(payload: EmployeeInput):
+    """
+    Predict attrition risk for a single employee.
+
+    Returns:
+    - **attrition_risk_pct** – Probability of leaving (0–100 %)
+    - **prediction** – 1 = Likely to Leave, 0 = Likely to Stay
+    - **reason** – Top 1–2 model-driven reasons
+    - **suggested_actions** – Recommended HR interventions
+    - **risk_drivers** – Top 5 features pushing toward attrition (with contribution scores)
+    - **protective_factors** – Top 5 features pushing toward retention (with contribution scores)
+    """
+    try:
+        return _run_attrition_prediction(payload)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logging.error(f"Attrition prediction failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/attrition/predict/batch", response_model=List[PredictionResponse], tags=["Attrition"], summary="Predict Employee Attrition Risk (Batch)",)
+async def attrition_predict_batch(payloads: List[EmployeeInput]):
+    """
+    Predict attrition risk for multiple employees in a single request.
+    Accepts a JSON array; returns a list of prediction results in the same order.
+    """
+    try:
+        return [_run_attrition_prediction(p) for p in payloads]
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logging.error(f"Attrition batch prediction failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/attrition/health", tags=["Attrition"], summary="Attrition Model Health Check",)
+async def attrition_health():
+    """Check whether the attrition model artifacts are loaded and ready."""
+    try:
+        resources = get_attrition_resources()
+        return {
+            "status": "ready",
+            "threshold": resources["threshold"],
+            "n_features": len(resources["feature_names"]),
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "detail": str(e)},
+        )
 
 # Lazy import functions - only load services when needed
 def get_ml_service():
