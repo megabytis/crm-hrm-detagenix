@@ -18,6 +18,14 @@ import io # Added to support document buffer streams
 from services.email_generator import router as email_router
 from services.followup_service import router as followup_router
 from services.client_ltv import router as clv_router
+from services.Smart_Resume_Screening.router import router as resume_router
+from services.AI_interview.router import router as interview_router
+from services.AI_HR_Chatbot.router import router as hr_chatbot_router
+from services.performance_prediction_service.router import router as performance_router
+from services.Team_formation_module.router import router as team_router
+from services.Workload_Balancing_Engine.router import router as workload_router
+from services.Burnout_detection.router import router as burnout_router
+from services.Salary_benchmarking.router import router as salary_router
 from services.sales_forecasting import generate_sales_forecast_report
 import importlib.util
 from pathlib import Path
@@ -60,6 +68,14 @@ app.add_middleware(
 app.include_router(email_router)
 app.include_router(followup_router)
 app.include_router(clv_router)
+app.include_router(resume_router)
+app.include_router(interview_router)
+app.include_router(hr_chatbot_router)
+app.include_router(performance_router)
+app.include_router(team_router)
+app.include_router(workload_router)
+app.include_router(burnout_router)
+app.include_router(salary_router)
 
 # Pydantic models for request/response
 class UserSignupRequest(BaseModel):
@@ -384,7 +400,7 @@ def get_attrition_resources():
         import warnings
         warnings.filterwarnings("ignore")
 
-        attrition_dir  = Path(__file__).resolve().parent /"services" / "Employee Attrition model"
+        attrition_dir  = Path(__file__).resolve().parent /"services" / "Employee Attrition Model"
         model_path     = Path(os.getenv("ATTRITION_MODEL_PATH",     attrition_dir / "attrition_model.pkl"))
         threshold_path = Path(os.getenv("ATTRITION_THRESHOLD_PATH", attrition_dir / "threshold.json"))
         columns_path   = Path(os.getenv("ATTRITION_COLUMNS_PATH",   attrition_dir / "columns.json"))

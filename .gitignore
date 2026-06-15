@@ -145,3 +145,9 @@ __pycache__
 
 ml_model/
 uploads/
+
+tmp/
+
+# Testing data/videos
+Testing_Data/
+ai-side/backend/services/AI_interview/Testing_Data/

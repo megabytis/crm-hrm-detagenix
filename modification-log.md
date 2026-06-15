@@ -225,3 +225,140 @@
 1. **Aggregated Prediction Parsing Filter**: Resolved auto-instantiated default Mongoose schema properties inflating prediction counts.
    * **Earlier**: Since `ml_prediction` has a nested schema default value (`predicted_temperature: "Unknown"`), Mongoose automatically instantiated the object on all 45 lead records. The statistics loop incorrectly incremented the prediction count for every lead, displaying `Coverage: 100%` and miscalculating segment dominant averages.
    * **Now**: The loop ignores leads with `"Unknown"` or placeholder predictions, only aggregating records having valid predicted classes (`"Hot"`, `"Warm"`, `"Cold"`). This correctly displays actual coverage (`22.2%` for the 10 predicted leads) and aligns all pie and histogram charts to reflect exact database records. Legacy loop kept commented out in-place.
+
+---
+
+### `ai-side/backend/main.py`
+1. **Dynamic Environment Variable Support**: Added `.env` loading from the parent directory on startup.
+   * **Earlier**: Did not invoke `load_dotenv` pointing specifically to the root directory's `.env`, meaning environment updates were not loaded dynamically if run from different contexts.
+   * **Now**: Dynamically resolves the parent `.env` path and calls `load_dotenv(dotenv_path=env_path)`.
+2. **Gemini API Key Resolution & Propagation**: Setup fallback propagation of Gemini keys.
+   * **Earlier**: Expected `GOOGLE_API_KEY` to be configured, which contained a dummy value in `.env`, resulting in a "400 API key not valid" error from Google.
+   * **Now**: Checks for `GEMINI_API_KEY`, overrides `GOOGLE_API_KEY` globally inside `os.environ` if valid, and explicitly passes `google_api_key` to `ChatGoogleGenerativeAI`.
+3. **Database-Driven Lead Metadata Verification**: Added MongoDB querying to verify lead details during prediction.
+   * **Earlier**: Received `lead_id` form input but did not look up the lead's real name or details in MongoDB, meaning template names (e.g., "Acme Corp") from the uploaded files would leak into prediction summaries.
+   * **Now**: Queries the MongoDB leads collection using `get_ml_service()` (supporting lookups by `leadId`, `unique_id`, or `ObjectId`). Fetches the real customer name (`Chennai Dental Care`) and email, and forces Gemini to anchor its analysis to the correct entity.
+4. **Persistent Database Sync for Predictions**: Saves CatBoost and Gemini output back to the database.
+   * **Earlier**: The prediction endpoint only returned the results to the client without updating the database.
+   * **Now**: Executes an in-place `update_one` on the matching lead record in MongoDB, saving the conversion probability, lead quality score, qualitative tier, AI summary, and recommended next actions.
+
+---
+
+### `ai-side/backend/services/Lead_Conversion/main.py`
+1. **Standalone API Key Propagation**: Configured model lifespan hook to use the correct Gemini key.
+   * **Earlier**: Initialized `ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")` with no explicit key, crashing if the environment key was missing or set to dummy.
+   * **Now**: Retrieves `GEMINI_API_KEY` (falling back to `GOOGLE_API_KEY`), sets it to `google_api_key`, and propagates it to `os.environ["GOOGLE_API_KEY"]` to ensure compatibility.
+
+---
+
+### `ai-side/backend/services/conversation intelligence engine/conversation_intelligence_service.py`
+1. **8-Field Analysis Prompt Schema**: Updated the Gemini prompt schema to return exactly the fields required by the target design document.
+   * **Earlier**: Requested standard properties (`sentiment`, `client_intent`, `objections`, `competitor_mentions`, `key_insights`).
+   * **Now**: Requests the 8 fields (`sentiment`, `risk_level`, `client_pain_point`, `primary_objection`, `secondary_objection`, `competitor_mentioned`, `competitor_threat_level`, `deal_stage_status`) and returns them as a structured JSON object. Kept legacy prompt commented out.
+2. **Analysis Sanitization and Heuristic Fallbacks**: Updated text processing logic for both LLM output parsing and regex-based fallback engine.
+   * **Earlier**: Sanitized lists and tags matching the old fields.
+   * **Now**: Sanitizes and normalizes the 8 new fields with built-in regex fallback matches for safety. Kept old logic commented out.
+3. **Scoring & Risk Mapping Calibration**: Upgraded scoring math and risk level categorization.
+   * **Earlier**: Computed scores and mapped risk labels directly to `"Deal at Risk"`, `"Moderate Risk"`, and `"Healthy Deal"`.
+   * **Now**: Mapped risk levels and flags directly to `"High / Critical"`, `"Moderate"`, and `"Low"` categories. Kept legacy scoring/risk methods commented out in-place.
+
+---
+
+### `frontend/src/components/CRMComponents/AIInsights.jsx`
+1. **Grid-Based Vertical Layout**: Rebuilt the Insights Summary sidebar/panel to match the layout of the target design document.
+   * **Earlier**: Displayed split card widgets for sentiment, risk level, objections list, competitor tags, and key insights.
+   * **Now**: Renders a vertical grid table matching the key-value design layout with 8 detailed fields. Kept old JSX commented out.
+2. **Status Color Dot Indicators**: Added status colored dots dynamically.
+   * **Earlier**: Displayed simple badged strings.
+   * **Now**: Integrates inline color-coded status dots for Sentiment (Green for Positive, Orange for Neutral, Red for Negative) and Risk Level (Red for High / Critical, Orange for Moderate, Green for Low).
+3. **Offline Mock Fallback Simulator**: Upgraded catch-block simulation.
+   * **Earlier**: Simulators returned mock records matching the old tags.
+   * **Now**: Simulators return mock records matching the new 8-field schema if the backend microservice is offline. Kept old code commented out.
+
+---
+
+### `ai-side/backend/services/Smart_Resume_Screening/router.py` [NEW]
+1. **Resume Screening API Router**: Created new file containing `/resume/screen` POST route.
+   * **Now**: Exposes structured resume extraction (Gemini) and SentenceTransformer-based semantic matching.
+
+---
+
+### `ai-side/backend/main.py`
+1. **Router Mounting**: Mounted `resume_router` on FastAPI.
+   * **Earlier**: Only email, followup, clv routers were mounted.
+   * **Now**: Mounted `resume_router` to expose `/resume/screen` under `/resume/screen`.
+2. **Router Mounting**: Mounted `interview_router` on FastAPI.
+   * **Earlier**: No interview routes mounted.
+   * **Now**: Mounted `interview_router` to expose `/interview/evaluate`.
+
+---
+
+### `ai-side/backend/services/AI_interview/router.py` [NEW]
+1. **Interview Evaluation API Router**: Created new file containing `/interview/evaluate` POST route.
+   * **Now**: Exposes transcription using Whisper (for audio/video) and evaluations (technical, communication, behavior) using OpenAI.
+
+---
+
+### `ai-side/requirements.txt`
+1. **AI Interview Dependencies**: Added speech-to-text packages.
+   * **Now**: Appended `faster-whisper>=1.0.0` and `imageio-ffmpeg>=0.4.9`.
+2. **AI HR Chatbot Dependencies**: Added Pinecone and document parsing packages.
+   * **Now**: Appended `pinecone>=5.0.0`, `langchain-pinecone>=0.2.0`, `langchain-huggingface>=1.0.0`, and `pypdf>=4.0.0`.
+
+---
+
+### `ai-side/backend/services/AI_HR_Chatbot/router.py` [NEW]
+1. **HR Chatbot API Router**: Created new file containing `/hr-chatbot/chat` POST route.
+   * **Now**: Exposes LangGraph-based secure ReAct agent with custom tools to query employee data and policies.
+
+---
+
+### `ai-side/backend/main.py`
+1. **Router Mounting**: Mounted `hr_chatbot_router` on FastAPI.
+   * **Earlier**: Only email, followup, clv, resume, and interview routers were mounted.
+   * **Now**: Mounted `hr_chatbot_router` to expose `/hr-chatbot/chat`.
+2. **Router Mounting**: Mounted `performance_router` on FastAPI.
+   * **Earlier**: No performance routers mounted.
+   * **Now**: Mounted `performance_router` to expose `/performance/predict`.
+3. **Router Mounting**: Mounted `team_router` on FastAPI.
+   * **Earlier**: No team routers mounted.
+   * **Now**: Mounted `team_router` to expose `/team/recommend`.
+4. **Router Mounting**: Mounted `workload_router` on FastAPI.
+   * **Earlier**: No workload balancing routers mounted.
+   * **Now**: Mounted `workload_router` to expose `/workload/balance`.
+5. **Router Mounting**: Mounted `burnout_router` on FastAPI.
+   * **Earlier**: No burnout detection routers mounted.
+   * **Now**: Mounted `burnout_router` to expose `/burnout/detect`.
+6. **Router Mounting**: Mounted `salary_router` on FastAPI.
+   * **Earlier**: No salary benchmarking routers mounted.
+   * **Now**: Mounted `salary_router` to expose `/salary/benchmark`.
+
+---
+
+### `ai-side/backend/services/performance_prediction_service/router.py` [NEW]
+1. **Performance Prediction API Router**: Created new file containing `/performance/predict` POST route.
+   * **Now**: Exposes Random Forest model-based performance category, promotion readiness, and skill gap evaluations.
+
+---
+
+### `ai-side/backend/services/Team_formation_module/router.py` [NEW]
+1. **Team Recommendation API Router**: Created new file containing `/team/recommend` POST route.
+   * **Now**: Exposes team candidate recommendation based on required skills, project type, and employee constraints.
+
+---
+
+### `ai-side/backend/services/Workload_Balancing_Engine/router.py` [NEW]
+1. **Workload Balancing API Router**: Created new file containing `/workload/balance` POST route.
+   * **Now**: Exposes Gemini ReAct agent workload scan, overloading checks, burnout risk detection, and reassignment recommendations.
+
+---
+
+### `ai-side/backend/services/Burnout_detection/router.py` [NEW]
+1. **Burnout Detection API Router**: Created new file containing `/burnout/detect` POST route.
+   * **Now**: Exposes detailed burnout risk calculations based on employee overtime hours, attendance rates, and sentiment scores (proxied via timesheet productivity index if not explicitly passed), and feeds them to Gemini to write custom organisational health reports and actionable recommendations. Also supports batch scans of all active employees to generate ranked leaderboard datasets for the AI Center portal.
+
+---
+
+### `ai-side/backend/services/Salary_benchmarking/router.py` [NEW]
+1. **Salary Benchmarking API Router**: Created new file containing `/salary/benchmark` POST route.
+   * **Now**: Exposes salary competitiveness evaluations comparing current salaries (CTC) with external market benchmarks (based on role and experience) and internal peer averages, recommends adjustment targets based on performance ratings, estimates mitigated attrition replacement ROI, and integrates Gemini to write custom compensation correction reports. Also supports organization-wide audit records and statistics summaries for leadership review.
