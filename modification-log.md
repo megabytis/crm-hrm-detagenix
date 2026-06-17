@@ -362,3 +362,28 @@
 ### `ai-side/backend/services/Salary_benchmarking/router.py` [NEW]
 1. **Salary Benchmarking API Router**: Created new file containing `/salary/benchmark` POST route.
    * **Now**: Exposes salary competitiveness evaluations comparing current salaries (CTC) with external market benchmarks (based on role and experience) and internal peer averages, recommends adjustment targets based on performance ratings, estimates mitigated attrition replacement ROI, and integrates Gemini to write custom compensation correction reports. Also supports organization-wide audit records and statistics summaries for leadership review.
+
+---
+
+### `ai-side/requirements.txt`
+1. **Chatbot dependency addition**: Added `langchain-community` to requirements to support document loaders (PyPDFLoader).
+
+---
+
+### `src/utils/aiService.js`
+1. **screenResume method addition**: Added `screenResume(formData)` to class AiService to forward resume matching multipart payload using standard global fetch.
+
+---
+
+### `src/modules/hrms-ai/hrmsAi.controller.js` [NEW]
+1. **screenResume controller**: Created `screenResume` handler. It reads uploaded files from disk, converts them to File blobs, appends to FormData, posts to Python, and unlinks disk files in the finally block.
+
+---
+
+### `src/modules/hrms-ai/hrmsAi.routes.js` [NEW]
+1. **HRMS AI Router**: Created new Express router file exposing `POST /resume/screen` with Multer fields configuration. Restricted to ADMIN and HR roles.
+
+---
+
+### `src/app.js`
+1. **Route mounting**: Imported and mounted `hrmsAiRoutes` under `/api/hrm/ai`.

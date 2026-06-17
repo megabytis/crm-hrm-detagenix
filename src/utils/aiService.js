@@ -123,6 +123,34 @@ class AiService {
     }
   }
 
+
+  // Exposes the Resume Screening & Smart Hiring API connection.
+  // Accepts a global FormData payload containing:
+  // - resume: File object of candidate PDF resume (Required)
+  // - jd_text: String representing Job Description text (Optional)
+  // - jd_file: File object of Job Description PDF (Optional)
+  // Utilizes native fetch to bypass Axios File serialization limits.
+  async screenResume(formData) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await fetch(`${AI_SERVICE_URL}/resume/screen`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI Resume Screening HTTP Error:", response.status, errorText);
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("AI Resume Screening Failed:", error.message);
+      return null;
+    }
+  }
+
   async generateInsights(recordId, context = {}) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
