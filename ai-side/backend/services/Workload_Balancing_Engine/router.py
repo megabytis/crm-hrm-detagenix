@@ -16,7 +16,7 @@ if "DB_NAME" in os.environ:
     os.environ["MONGO_DB"] = os.environ["DB_NAME"]
 
 from ai_engine import run_workload_analysis
-from tools import _get_db
+from services.Workload_Balancing_Engine.tools import _get_db
 
 router = APIRouter(prefix="/workload", tags=["Workload Balancing Engine"])
 

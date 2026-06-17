@@ -9,7 +9,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-from tools import TOOLS, run_tool, ensure_indexes
+from services.Workload_Balancing_Engine.tools import TOOLS, run_tool, ensure_indexes
 
 log = logging.getLogger(__name__)
 

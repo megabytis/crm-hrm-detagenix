@@ -109,6 +109,9 @@ def _get_employee_info(employee_id: str):
     }
 
 def _query_policy_rag(query: str) -> str:
+    if vectorstore is None:
+        return "Company policies query is currently unavailable (Pinecone API Key is not configured)."
+
     docs = vectorstore.similarity_search(query, k=3)
 
     if not docs:
