@@ -90,3 +90,70 @@ exports.screenResume = async (req, res) => {
     }
   }
 };
+
+// 2. AI Interview Assistant
+// Expects:
+// - audio_file: File upload (Optional - Audio/Video recording of the interview)
+// - rough_notes: Text body (Optional - Pre-extracted transcripts or notes)
+// Forwarded to FastAPI endpoint '/interview/evaluate' as multipart/form-data.
+exports.evaluateInterview = async (req, res) => {
+  let audioPath = null;
+  try {
+    const audioFile = req.files && req.files.audio_file ? req.files.audio_file[0] : null;
+    const roughNotes = req.body.rough_notes;
+
+    // Validate that either audio_file or rough_notes is provided
+    if (!audioFile && !roughNotes) {
+      return res.status(400).json({
+        success: false,
+        message: "You must provide either an audio_file or rough_notes."
+      });
+    }
+
+    const formData = new FormData();
+
+    if (audioFile) {
+      audioPath = audioFile.path;
+      const audioBuffer = fs.readFileSync(audioFile.path);
+      const audioBlob = new File([audioBuffer], audioFile.originalname, { type: audioFile.mimetype });
+      formData.append("audio_file", audioBlob);
+    }
+
+    if (roughNotes) {
+      formData.append("rough_notes", roughNotes);
+    }
+
+    // Forward to the Python AI service
+    const evaluationResult = await aiService.evaluateInterview(formData);
+
+    if (!evaluationResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to evaluate interview. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: evaluationResult
+    });
+
+  } catch (error) {
+    console.error("Express Interview Evaluation Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during interview evaluation.",
+      error: error.message
+    });
+  } finally {
+    // Standard cleanup: delete uploaded files from disk to prevent storage leaks
+    try {
+      if (audioPath && fs.existsSync(audioPath)) {
+        fs.unlinkSync(audioPath);
+      }
+    } catch (cleanupError) {
+      console.warn("Failed to delete temp uploads:", cleanupError.message);
+    }
+  }
+};
+

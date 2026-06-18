@@ -387,3 +387,19 @@
 
 ### `src/app.js`
 1. **Route mounting**: Imported and mounted `hrmsAiRoutes` under `/api/hrm/ai`.
+
+---
+
+### `src/utils/aiService.js`
+1. **evaluateInterview method addition**: Added `evaluateInterview(formData)` to class AiService to forward interview evaluation payloads using standard global fetch.
+
+---
+
+### `src/modules/hrms-ai/hrmsAi.controller.js`
+1. **evaluateInterview controller**: Added `evaluateInterview` handler to parse `audio_file` and/or `rough_notes` inputs, forward them to the Python microservice, and clean up temporary uploaded files.
+
+---
+
+### `src/modules/hrms-ai/hrmsAi.routes.js`
+1. **evaluateInterview Route**: Exposed `POST /interview/evaluate` restricted to ADMIN and HR roles, supporting optional `audio_file` uploads.
+

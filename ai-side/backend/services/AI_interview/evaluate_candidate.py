@@ -1,15 +1,28 @@
 import os
-from dotenv import load_dotenv
-from openai import OpenAI
-
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# -----------------------------
-# IMPORTS
-# -----------------------------
 import json
 import re
+from dotenv import load_dotenv
+
+load_dotenv()
+
+openai_key = os.getenv("OPENAI_API_KEY")
+gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+use_openai = False
+openai_client = None
+gemini_client = None
+
+if openai_key and "dummy" not in openai_key.lower() and openai_key.strip():
+    from openai import OpenAI
+    try:
+        openai_client = OpenAI(api_key=openai_key)
+        use_openai = True
+    except Exception as e:
+        print(f"⚠️ Failed to init OpenAI client in evaluate_candidate: {e}. Falling back to Gemini.")
+
+if not use_openai:
+    import google.genai as genai
+    gemini_client = genai.Client(api_key=gemini_key)
 
 
 class FinalScoreEvaluator:
@@ -18,35 +31,54 @@ class FinalScoreEvaluator:
         pass
 
     # -----------------------------
-    # LLM CALL (OPENAI)
+    # LLM CALL (WITH GEMINI FALLBACK)
     # -----------------------------
     def llm_score(self, prompt: str) -> float:
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",   # fast + cost-effective
-                messages=[
-                    {"role": "system", "content": "Return ONLY a numeric score between 0 and 100. No explanation."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0
-            )
-
-            output = response.choices[0].message.content.strip()
-
-            # Try JSON parsing first
+        if use_openai:
             try:
-                data = json.loads(output)
-                return float(data.get("score", 50))
-            except:
-                pass
+                response = openai_client.chat.completions.create(
+                    model="gpt-4o-mini",   # fast + cost-effective
+                    messages=[
+                        {"role": "system", "content": "Return ONLY a numeric score between 0 and 100. No explanation."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0
+                )
+                output = response.choices[0].message.content.strip()
+                return self._parse_score(output)
+            except Exception as e:
+                print(f"⚠️ OpenAI Error in llm_score: {e}. Falling back to Gemini.")
+                return self._llm_score_gemini(prompt)
+        else:
+            return self._llm_score_gemini(prompt)
 
-            # Fallback: extract number
-            match = re.search(r"\d+(\.\d+)?", output)
-            return float(match.group()) if match else 50.0
-
+    def _llm_score_gemini(self, prompt: str) -> float:
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.5-flash-lite",
+                contents=f"System: Return ONLY a numeric score between 0 and 100. No explanation.\n\nUser Prompt: {prompt}",
+                config={"temperature": 0}
+            )
+            output = response.text.strip()
+            if output.startswith("```"):
+                output = output.replace("```json", "").replace("```", "").strip()
+            return self._parse_score(output)
         except Exception as e:
-            print(f"❌ OpenAI Error: {e}")
+            print(f"❌ Gemini Error in llm_score fallback: {e}")
             return 50.0
+
+    def _parse_score(self, output: str) -> float:
+        # Try JSON parsing first
+        try:
+            data = json.loads(output)
+            return float(data.get("score", 50))
+        except:
+            pass
+
+        # Fallback: extract number
+        match = re.search(r"\d+(\.\d+)?", output)
+        return float(match.group()) if match else 50.0
+
 
 
     # -----------------------------

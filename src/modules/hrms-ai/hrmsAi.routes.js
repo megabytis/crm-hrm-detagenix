@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../../config/multer");
-const { screenResume } = require("./hrmsAi.controller");
+const { screenResume, evaluateInterview } = require("./hrmsAi.controller");
 const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
 
 // Expose the Smart Resume Screening & Matching API route.
@@ -17,4 +17,17 @@ router.post(
   screenResume
 );
 
+// Expose the AI Interview Assistant route.
+// Restricted to ADMIN and HR roles to protect candidate privacy.
+router.post(
+  "/interview/evaluate",
+  protect,
+  authorizeRoles("ADMIN", "HR"),
+  upload.fields([
+    { name: "audio_file", maxCount: 1 }
+  ]),
+  evaluateInterview
+);
+
 module.exports = router;
+

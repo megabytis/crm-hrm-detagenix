@@ -151,6 +151,33 @@ class AiService {
     }
   }
 
+  // Exposes the AI Interview Assistant API connection.
+  // Accepts a global FormData payload containing:
+  // - audio_file: File object of audio/video recording (Optional)
+  // - rough_notes: String representing text transcript or notes (Optional)
+  // Utilizes native fetch to bypass Axios File serialization limits.
+  async evaluateInterview(formData) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await fetch(`${AI_SERVICE_URL}/interview/evaluate`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI Interview Evaluation HTTP Error:", response.status, errorText);
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("AI Interview Evaluation Failed:", error.message);
+      return null;
+    }
+  }
+
+
   async generateInsights(recordId, context = {}) {
     if (!AI_SERVICE_ENABLED) return null;
     try {
