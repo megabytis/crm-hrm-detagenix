@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../../config/multer");
-const { screenResume, evaluateInterview } = require("./hrmsAi.controller");
+const { screenResume, evaluateInterview, chatWithHrBot } = require("./hrmsAi.controller");
 const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
 
 // Expose the Smart Resume Screening & Matching API route.
@@ -29,5 +29,14 @@ router.post(
   evaluateInterview
 );
 
+// Expose the AI HR Chatbot route.
+// Restricted to authenticated users.
+router.post(
+  "/hr-chatbot/chat",
+  protect,
+  chatWithHrBot
+);
+
 module.exports = router;
+
 

@@ -108,20 +108,24 @@ PDF_PATH   = "Company Policy Document.pdf"
 # ─────────────────────────────────────────────
 # INIT PINECONE
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# INIT PINECONE
+# ─────────────────────────────────────────────
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 pc = None
 index = None
 vectorstore = None
-
-# ─────────────────────────────────────────────
-# EMBEDDING (shared everywhere)
-# ─────────────────────────────────────────────
-embedding = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+embedding = None
 
 if PINECONE_API_KEY:
     try:
+        # ─────────────────────────────────────────────
+        # EMBEDDING (shared everywhere)
+        # ─────────────────────────────────────────────
+        embedding = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+        
         pc = Pinecone(api_key=PINECONE_API_KEY)
         if INDEX_NAME not in [i.name for i in pc.list_indexes()]:
             pc.create_index(
@@ -147,6 +151,7 @@ if PINECONE_API_KEY:
         vectorstore = None
 else:
     print("⚠️ PINECONE_API_KEY is not set. Policy search (RAG) will be disabled.")
+
 
 # ─────────────────────────────────────────────
 # INGESTION (ONLY WHEN NEEDED)

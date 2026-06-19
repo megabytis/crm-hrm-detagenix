@@ -38,7 +38,11 @@ async def lifespan(app: FastAPI):
     if api_key and "dummy" not in api_key.lower():
         os.environ["GOOGLE_API_KEY"] = api_key
         
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", google_api_key=api_key)
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash-lite",
+        google_api_key=api_key,
+        transport="rest"
+    )
     print("✅ Gemini LLM ready.")
     yield
 

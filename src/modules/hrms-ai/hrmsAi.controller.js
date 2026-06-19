@@ -157,3 +157,50 @@ exports.evaluateInterview = async (req, res) => {
   }
 };
 
+// 3. AI HR Chatbot
+// Expects:
+// - message: String (Required - User message input)
+// - employee_id: String (Required - Scoped employee ID)
+// - history: Array (Optional - Previous messages list)
+// Forwarded to FastAPI endpoint '/hr-chatbot/chat' as JSON.
+exports.chatWithHrBot = async (req, res) => {
+  try {
+    const { message, employee_id, history } = req.body;
+
+    if (!message || !employee_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: message and employee_id are required."
+      });
+    }
+
+    // Forward to the Python AI service
+    const chatResult = await aiService.hrChatbotChat({
+      message,
+      employee_id,
+      history
+    });
+
+    if (!chatResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to query HR Chatbot. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: chatResult
+    });
+
+  } catch (error) {
+    console.error("Express HR Chatbot Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during HR Chatbot query.",
+      error: error.message
+    });
+  }
+};
+
+

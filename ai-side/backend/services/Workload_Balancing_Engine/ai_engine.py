@@ -34,7 +34,7 @@ if not _API_KEY:
 
 client = genai.Client(api_key=_API_KEY)
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # =========================================================
 # SYSTEM PROMPT

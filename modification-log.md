@@ -402,4 +402,33 @@
 
 ### `src/modules/hrms-ai/hrmsAi.routes.js`
 1. **evaluateInterview Route**: Exposed `POST /interview/evaluate` restricted to ADMIN and HR roles, supporting optional `audio_file` uploads.
+2. **chatWithHrBot Route**: Exposed `POST /hr-chatbot/chat` restricted to authenticated users.
+
+---
+
+### `src/utils/aiService.js`
+1. **hrChatbotChat method addition**: Added `hrChatbotChat(chatPayload)` to class AiService to forward chat payloads using standard JSON POST.
+
+---
+
+### `src/modules/hrms-ai/hrmsAi.controller.js`
+1. **chatWithHrBot controller**: Added `chatWithHrBot` handler to parse `message`, `employee_id`, and `history` and forward them to the Python chatbot microservice.
+
+---
+
+### `ai-side/.env`
+1. **GEMINI_MODEL update**: Updated default `GEMINI_MODEL` from `gemini-1.5-flash` to `gemini-2.5-flash` to resolve 404/compatibility issues with new free-tier key registrations.
+
+---
+
+### `ai-side/backend/services/AI_HR_Chatbot/llm_layer.py`
+1. **Model Parameter Dynamic Load**: Updated the `ChatGoogleGenerativeAI` instantiation to use the dynamic `GEMINI_MODEL` env variable (falling back to `gemini-2.5-flash`), replacing the hardcoded `gemini-2.0-flash` which fails with 429 quota exceptions on newer free-tier API keys.
+2. **Robust Message Content Parsing**: Handled cases where `msg.content` returned from the ReAct agent is formatted as a list of content blocks/dicts instead of a flat string, avoiding a `'list' object has no attribute 'strip'` crash.
+
+---
+
+### `ai-side/backend/services/Workload_Balancing_Engine/ai_engine.py`
+1. **Model Parameter Dynamic Load**: Replaced the hardcoded `"gemini-2.0-flash"` model name with `os.getenv("GEMINI_MODEL", "gemini-2.5-flash")` to ensure compatibility across all Gemini modules.
+
+
 

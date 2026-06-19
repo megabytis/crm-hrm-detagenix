@@ -31,9 +31,10 @@ ensure_policy_data_loaded()
 # LLM
 # ─────────────────────────────────────────────
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
+    model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
     temperature=0,
     google_api_key=os.getenv("GEMINI_API_KEY"),
+    transport="rest",
 )
 
 # ─────────────────────────────────────────────
@@ -185,9 +186,23 @@ def safe_chat(agent, employee_id: str, query: str, history: list) -> tuple[str, 
 
         final_reply = ""
         for msg in reversed(result["messages"]):
-            if isinstance(msg, AIMessage) and msg.content.strip():
-                final_reply = msg.content.strip()
-                break
+            if isinstance(msg, AIMessage):
+                content = msg.content
+                if isinstance(content, list):
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict):
+                            if block.get("type") == "text":
+                                text_parts.append(block.get("text", ""))
+                        elif isinstance(block, str):
+                            text_parts.append(block)
+                    extracted = "".join(text_parts).strip()
+                    if extracted:
+                        final_reply = extracted
+                        break
+                elif isinstance(content, str) and content.strip():
+                    final_reply = content.strip()
+                    break
 
         if not final_reply:
             final_reply = "Sorry, I couldn't generate a response. Please try again."

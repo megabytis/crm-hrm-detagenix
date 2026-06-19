@@ -61,7 +61,8 @@ def _get_llm():
         return ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-lite",
             google_api_key=api_key,
-            temperature=0.3
+            temperature=0.3,
+            transport="rest"
         )
     except Exception as e:
         print(f"[WARN] Failed to load Gemini LLM for Burnout router: {e}", flush=True)

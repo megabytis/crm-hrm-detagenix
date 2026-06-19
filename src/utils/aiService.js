@@ -177,6 +177,21 @@ class AiService {
     }
   }
 
+  // Exposes the secure AI HR Chatbot API connection.
+  // Accepts a JSON payload containing:
+  // - message: String representing user message (Required)
+  // - employee_id: String representing employee ID (Required)
+  // - history: Array of previous conversation messages (Optional)
+  async hrChatbotChat(chatPayload) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/hr-chatbot/chat", chatPayload);
+      return response.data;
+    } catch (error) {
+      console.error("AI HR Chatbot Chat Failed:", error.response?.data || error.message);
+      return null;
+    }
+  }
 
   async generateInsights(recordId, context = {}) {
     if (!AI_SERVICE_ENABLED) return null;
