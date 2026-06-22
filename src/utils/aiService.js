@@ -193,6 +193,49 @@ class AiService {
     }
   }
 
+  // Exposes the Performance Prediction Model connection.
+  // Accepts a JSON payload containing:
+  // - attendance: Float (Required - Attendance percentage, e.g. 95.5)
+  // - task_completion_rate: Float (Required - Completion percentage, e.g. 0.92)
+  // - peer_reviews: Float (Required - Average score, e.g. 4.5)
+  // - project_success_rate: Float (Required - Ratio, e.g. 0.88)
+  async predictPerformance(performancePayload) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/performance/predict", performancePayload);
+      return response.data;
+    } catch (error) {
+      console.error("AI Performance Prediction Failed:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  // Exposes the Attrition Prediction Model connection (Single).
+  // Accepts a JSON payload containing the employee features matching EmployeeInput schema.
+  async predictAttrition(employeePayload) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/attrition/predict", employeePayload);
+      return response.data;
+    } catch (error) {
+      console.error("AI Attrition Prediction Failed:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  // Exposes the Attrition Prediction Model connection (Batch).
+  // Accepts a JSON payload containing an Array of employee feature objects.
+  async predictAttritionBatch(batchPayload) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/attrition/predict/batch", batchPayload);
+      return response.data;
+    } catch (error) {
+      console.error("AI Attrition Batch Prediction Failed:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
   async generateInsights(recordId, context = {}) {
     if (!AI_SERVICE_ENABLED) return null;
     try {

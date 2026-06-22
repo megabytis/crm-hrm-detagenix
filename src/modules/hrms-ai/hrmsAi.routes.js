@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../../config/multer");
-const { screenResume, evaluateInterview, chatWithHrBot } = require("./hrmsAi.controller");
+const { screenResume, evaluateInterview, chatWithHrBot, predictPerformance, predictAttrition, predictAttritionBatch } = require("./hrmsAi.controller");
 const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
 
 // Expose the Smart Resume Screening & Matching API route.
@@ -35,6 +35,33 @@ router.post(
   "/hr-chatbot/chat",
   protect,
   chatWithHrBot
+);
+
+// Expose the Performance Prediction route.
+// Restricted to ADMIN and HR roles.
+router.post(
+  "/performance/predict",
+  protect,
+  authorizeRoles("ADMIN", "HR"),
+  predictPerformance
+);
+
+// Expose the Attrition Prediction route (Single).
+// Restricted to ADMIN and HR roles.
+router.post(
+  "/attrition/predict",
+  protect,
+  authorizeRoles("ADMIN", "HR"),
+  predictAttrition
+);
+
+// Expose the Attrition Prediction route (Batch).
+// Restricted to ADMIN and HR roles.
+router.post(
+  "/attrition/predict/batch",
+  protect,
+  authorizeRoles("ADMIN", "HR"),
+  predictAttritionBatch
 );
 
 module.exports = router;

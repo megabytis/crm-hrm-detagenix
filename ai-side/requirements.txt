@@ -76,3 +76,4 @@ langchain-community
 pypdf>=4.0.0
 tenacity>=8.0.0
 faker>=18.0.0
+imbalanced-learn>=0.12.0

@@ -203,4 +203,163 @@ exports.chatWithHrBot = async (req, res) => {
   }
 };
 
+// 4. Performance Prediction Model
+// Expects:
+// - attendance: Number (Required, 0-100)
+// - task_completion_rate: Number (Required, 0-1)
+// - peer_reviews: Number (Required, 1-5)
+// - project_success_rate: Number (Required, 0-1)
+// Forwarded to FastAPI endpoint '/performance/predict' as JSON.
+exports.predictPerformance = async (req, res) => {
+  try {
+    const { attendance, task_completion_rate, peer_reviews, project_success_rate } = req.body;
+
+    // Validation
+    if (attendance === undefined || task_completion_rate === undefined || peer_reviews === undefined || project_success_rate === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: attendance, task_completion_rate, peer_reviews, and project_success_rate are required."
+      });
+    }
+
+    const att = Number(attendance);
+    const tcr = Number(task_completion_rate);
+    const pr = Number(peer_reviews);
+    const psr = Number(project_success_rate);
+
+    if (isNaN(att) || att < 0 || att > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "attendance must be a number between 0 and 100."
+      });
+    }
+    if (isNaN(tcr) || tcr < 0 || tcr > 1) {
+      return res.status(400).json({
+        success: false,
+        message: "task_completion_rate must be a number between 0 and 1."
+      });
+    }
+    if (isNaN(pr) || pr < 1 || pr > 5) {
+      return res.status(400).json({
+        success: false,
+        message: "peer_reviews must be a number between 1 and 5."
+      });
+    }
+    if (isNaN(psr) || psr < 0 || psr > 1) {
+      return res.status(400).json({
+        success: false,
+        message: "project_success_rate must be a number between 0 and 1."
+      });
+    }
+
+    // Forward to Python AI service
+    const predictionResult = await aiService.predictPerformance({
+      attendance: att,
+      task_completion_rate: tcr,
+      peer_reviews: pr,
+      project_success_rate: psr
+    });
+
+    if (!predictionResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to execute performance prediction. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: predictionResult
+    });
+
+  } catch (error) {
+    console.error("Express Performance Prediction Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during performance prediction.",
+      error: error.message
+    });
+  }
+};
+
+// 5. Employee Attrition Model (Single)
+// Expects: JSON payload representing categorical and numeric inputs for attrition prediction.
+// Forwarded to FastAPI endpoint '/attrition/predict' as JSON.
+exports.predictAttrition = async (req, res) => {
+  try {
+    const employeeData = req.body;
+
+    // Validate that the request payload is an object and not empty
+    if (!employeeData || typeof employeeData !== "object" || Object.keys(employeeData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing employee details payload for attrition prediction."
+      });
+    }
+
+    // Forward to the Python AI service
+    const predictionResult = await aiService.predictAttrition(employeeData);
+
+    if (!predictionResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to predict attrition. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: predictionResult
+    });
+
+  } catch (error) {
+    console.error("Express Attrition Prediction Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during attrition prediction.",
+      error: error.message
+    });
+  }
+};
+
+// 6. Employee Attrition Model (Batch)
+// Expects: JSON array representing list of employee details.
+// Forwarded to FastAPI endpoint '/attrition/predict/batch' as JSON.
+exports.predictAttritionBatch = async (req, res) => {
+  try {
+    const batchPayload = req.body;
+
+    // Validate that the request payload is a non-empty array
+    if (!Array.isArray(batchPayload) || batchPayload.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Request body must be a non-empty JSON array of employee objects."
+      });
+    }
+
+    // Forward to the Python AI service
+    const predictionResult = await aiService.predictAttritionBatch(batchPayload);
+
+    if (!predictionResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to execute batch attrition prediction. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: predictionResult
+    });
+
+  } catch (error) {
+    console.error("Express Batch Attrition Prediction Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during batch attrition prediction.",
+      error: error.message
+    });
+  }
+};
+
 

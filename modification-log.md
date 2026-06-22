@@ -430,5 +430,34 @@
 ### `ai-side/backend/services/Workload_Balancing_Engine/ai_engine.py`
 1. **Model Parameter Dynamic Load**: Replaced the hardcoded `"gemini-2.0-flash"` model name with `os.getenv("GEMINI_MODEL", "gemini-2.5-flash")` to ensure compatibility across all Gemini modules.
 
+---
+
+### `src/utils/aiService.js`
+1. **predictPerformance method addition**: Added `predictPerformance(performancePayload)` to client class to forward performance prediction attributes to the Python service.
+2. **predictAttrition and predictAttritionBatch method addition**: Added single and batch attrition prediction routing client methods.
+
+---
+
+### `src/modules/hrms-ai/hrmsAi.controller.js`
+1. **predictPerformance controller**: Added `predictPerformance` handler to validate input parameters (attendance, task completion rate, reviews, project success rate) and forward to Python microservice.
+2. **predictAttrition and predictAttritionBatch controllers**: Added single and batch handlers to capture, validate, and forward attrition inputs.
+
+---
+
+### `src/modules/hrms-ai/hrmsAi.routes.js`
+1. **Route integration**: Registered `POST /performance/predict`, `POST /attrition/predict`, and `POST /attrition/predict/batch` routes, restricting them strictly to users with `ADMIN` and `HR` roles to protect staff records.
+
+---
+
+### `ai-side/requirements.txt`
+1. **Dependency addition**: Added `imbalanced-learn>=0.12.0` to requirements to resolve model unpickling module errors.
+
+---
+
+### `ai-side/backend/services/AI_HR_Chatbot/tools.py`
+1. **Tool Signature Argument Removal**: Removed the `employee_id` parameter from `leave_balance_tool`, `salary_tool`, and `employee_info_tool` to prevent the LLM from passing `"current_employee"` which resulted in "record not found" errors. Instead, the tools now securely resolve the scoped `employee_id` from the outer lexical closure where the agent was instantiated.
+
+
+
 
 
