@@ -362,4 +362,170 @@ exports.predictAttritionBatch = async (req, res) => {
   }
 };
 
+// 7. Intelligent Team Formation
+// Expects:
+// - project_type: String (Required)
+// - required_skills: Array of Strings (Required)
+// - team_size: Number (Optional, default 3)
+// - top_n_options: Number (Optional, default 3)
+// Forwarded to FastAPI endpoint '/team/recommend' as JSON.
+exports.recommendTeam = async (req, res) => {
+  try {
+    const { project_type, required_skills, team_size, top_n_options } = req.body;
+
+    if (!project_type || !required_skills || !Array.isArray(required_skills) || required_skills.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: project_type and non-empty required_skills array are required."
+      });
+    }
+
+    const teamPayload = {
+      project_type,
+      required_skills,
+      team_size: team_size ? Number(team_size) : 3,
+      top_n_options: top_n_options ? Number(top_n_options) : 3
+    };
+
+    const teamResult = await aiService.recommendTeam(teamPayload);
+
+    if (!teamResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to fetch team recommendations. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: teamResult
+    });
+
+  } catch (error) {
+    console.error("Express Team Recommendation Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during team recommendation request.",
+      error: error.message
+    });
+  }
+};
+
+// 8. Workload Balancing Engine
+// Triggers the ReAct workload analysis agent via FastAPI '/workload/balance' (JSON).
+// Restricted to ADMIN and HR roles.
+exports.balanceWorkload = async (req, res) => {
+  try {
+    const balanceResult = await aiService.balanceWorkload();
+
+    if (!balanceResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to run workload balancing analysis. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: balanceResult
+    });
+
+  } catch (error) {
+    console.error("Express Workload Balancing Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during workload balancing request.",
+      error: error.message
+    });
+  }
+};
+
+// 9. Burnout & Engagement Detection
+// Expects:
+// - employee_id: String (Optional)
+// - overtime_hours: Number (Optional override)
+// - attendance_rate: Number (Optional override)
+// - sentiment_score: Number (Optional override)
+// - window_days: Number (Optional, default 30)
+// Forwarded to FastAPI endpoint '/burnout/detect' as JSON.
+exports.detectBurnout = async (req, res) => {
+  try {
+    const { employee_id, overtime_hours, attendance_rate, sentiment_score, window_days } = req.body;
+
+    const burnoutPayload = {
+      employee_id,
+      overtime_hours: overtime_hours !== undefined ? Number(overtime_hours) : undefined,
+      attendance_rate: attendance_rate !== undefined ? Number(attendance_rate) : undefined,
+      sentiment_score: sentiment_score !== undefined ? Number(sentiment_score) : undefined,
+      window_days: window_days !== undefined ? Number(window_days) : 30
+    };
+
+    const detectResult = await aiService.detectBurnout(burnoutPayload);
+
+    if (!detectResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to evaluate burnout indicators. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: detectResult
+    });
+
+  } catch (error) {
+    console.error("Express Burnout Detection Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during burnout detection request.",
+      error: error.message
+    });
+  }
+};
+
+// 10. AI Salary Benchmarking
+// Expects:
+// - employee_id: String (Optional)
+// - role: String (Optional override)
+// - experience_years: Number (Optional override)
+// - current_salary: Number (Optional override)
+// - location: String (Optional, default 'India')
+// Forwarded to FastAPI endpoint '/salary/benchmark' as JSON.
+exports.benchmarkSalary = async (req, res) => {
+  try {
+    const { employee_id, role, experience_years, current_salary, location } = req.body;
+
+    const salaryPayload = {
+      employee_id,
+      role,
+      experience_years: experience_years !== undefined ? Number(experience_years) : undefined,
+      current_salary: current_salary !== undefined ? Number(current_salary) : undefined,
+      location: location || "India"
+    };
+
+    const benchmarkResult = await aiService.benchmarkSalary(salaryPayload);
+
+    if (!benchmarkResult) {
+      return res.status(503).json({
+        success: false,
+        message: "Failed to run salary benchmarking. AI service may be offline."
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: benchmarkResult
+    });
+
+  } catch (error) {
+    console.error("Express Salary Benchmarking Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error during salary benchmarking request.",
+      error: error.message
+    });
+  }
+};
+
 

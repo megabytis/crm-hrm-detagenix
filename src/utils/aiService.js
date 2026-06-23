@@ -236,6 +236,72 @@ class AiService {
     }
   }
 
+  // Exposes the Intelligent Team Formation API connection.
+  // Accepts a JSON payload containing:
+  // - project_type: String (Required)
+  // - required_skills: Array of Strings (Required)
+  // - team_size: Integer (Optional)
+  // - top_n_options: Integer (Optional)
+  async recommendTeam(teamPayload) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/team/recommend", teamPayload);
+      return response.data;
+    } catch (error) {
+      console.error("AI Team Recommendation Failed:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  // Exposes the Workload Balancing Engine API connection.
+  // Triggers the ReAct agent runner and returns report + pending suggestions.
+  async balanceWorkload() {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/workload/balance");
+      return response.data;
+    } catch (error) {
+      console.error("AI Workload Balancing Failed:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  // Exposes the Burnout & Engagement Detection API connection.
+  // Accepts a JSON payload containing:
+  // - employee_id: String (Optional)
+  // - overtime_hours: Float (Optional override)
+  // - attendance_rate: Float (Optional override)
+  // - sentiment_score: Float (Optional override)
+  // - window_days: Integer (Optional)
+  async detectBurnout(burnoutPayload) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/burnout/detect", burnoutPayload);
+      return response.data;
+    } catch (error) {
+      console.error("AI Burnout Detection Failed:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  // Exposes the AI Salary Benchmarking API connection.
+  // Accepts a JSON payload containing:
+  // - employee_id: String (Optional)
+  // - role: String (Optional override)
+  // - experience_years: Float (Optional override)
+  // - current_salary: Float (Optional override)
+  // - location: String (Optional)
+  async benchmarkSalary(salaryPayload) {
+    if (!AI_SERVICE_ENABLED) return null;
+    try {
+      const response = await this.client.post("/salary/benchmark", salaryPayload);
+      return response.data;
+    } catch (error) {
+      console.error("AI Salary Benchmarking Failed:", error.response?.data || error.message);
+      return null;
+    }
+  }
+
   async generateInsights(recordId, context = {}) {
     if (!AI_SERVICE_ENABLED) return null;
     try {

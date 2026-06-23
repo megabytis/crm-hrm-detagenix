@@ -39,14 +39,16 @@ class EmployeeBurnoutDetail(BaseModel):
 # Helper to resolve MongoDB connection dynamically
 def _get_db():
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-    # Check if database has timesheets or employees, fallback to defaults
-    db = client[DB_NAME]
-    # Verify if collections exist, else try another common DB name
-    if "employees" not in db.list_collection_names() and "workload_balancing_ai" in client.list_database_names():
-        return client["workload_balancing_ai"]
-    if "employees" not in db.list_collection_names() and "hr_ai_system" in client.list_database_names():
-        return client["hr_ai_system"]
+    db_name = DB_NAME
+    if db_name == "crm+hrm":
+        db_name = "crm-hrms-DB"
+    db = client[db_name]
     return db
+
+def _get_employees_coll(db):
+    if "users" in db.list_collection_names():
+        return db["users"]
+    return db["employees"]
 
 def _get_llm():
     try:
@@ -119,9 +121,18 @@ async def detect_burnout(payload: BurnoutDetectRequest):
         
         # Scenario A: Single Employee Detailed Analysis
         if payload.employee_id:
-            emp = db["employees"].find_one({"employee_id": payload.employee_id})
+            coll = _get_employees_coll(db)
+            from bson import ObjectId
+            emp = coll.find_one({"employee_id": payload.employee_id})
+            if not emp:
+                try:
+                    emp = coll.find_one({"_id": ObjectId(payload.employee_id)})
+                except:
+                    emp = coll.find_one({"_id": payload.employee_id})
             if not emp:
                 raise HTTPException(status_code=404, detail=f"Employee {payload.employee_id} not found.")
+            emp_name = emp.get("name", "Unknown")
+            emp_team = emp.get("team") or emp.get("department") or "N/A"
                 
             # 1. Overtime hours computation
             overtime_hours = payload.overtime_hours
@@ -176,8 +187,8 @@ You are a senior HR analytics and organizational health expert.
 Analyze the burnout risk and engagement metrics for this employee and write a professional assessment report.
 
 Employee ID: {payload.employee_id}
-Employee Name: {emp.get('name', 'Unknown')}
-Team: {emp.get('team', 'N/A')}
+Employee Name: {emp_name}
+Team: {emp_team}
 Overtime Hours (last {payload.window_days} days): {overtime_hours:.1f} hours
 Attendance Rate: {attendance_rate:.1%}
 Sentiment Score (0.0 - 1.0): {sentiment_score:.2f}
@@ -255,8 +266,8 @@ Final Recommendations:
             return {
                 "success": True,
                 "employee_id": payload.employee_id,
-                "name": emp.get("name"),
-                "team": emp.get("team"),
+                "name": emp_name,
+                "team": emp_team,
                 "overtime_hours": overtime_hours,
                 "attendance_rate": attendance_rate,
                 "sentiment_score": sentiment_score,
@@ -267,7 +278,16 @@ Final Recommendations:
             
         # Scenario B: Leaderboard / All Employees Scan (for AI Center portal)
         else:
-            employees = list(db["employees"].find({}, {"employee_id": 1, "name": 1, "team": 1}))
+            coll = _get_employees_coll(db)
+            raw_employees = list(coll.find({}, {"employee_id": 1, "name": 1, "team": 1, "department": 1, "_id": 1}))
+            employees = []
+            for r in raw_employees:
+                eid = r.get("employee_id") or str(r["_id"])
+                employees.append({
+                    "employee_id": eid,
+                    "name": r.get("name", "Unknown"),
+                    "team": r.get("team") or r.get("department") or "N/A"
+                })
             if not employees:
                 return {"success": True, "scan_timestamp": datetime.utcnow().isoformat(), "employees": []}
                 

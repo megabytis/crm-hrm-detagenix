@@ -12,9 +12,23 @@ log = logging.getLogger(__name__)
 # DB CONNECTION  (BUG-1, BUG-2)
 # =========================================================
 
-_MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-_DB_NAME   = os.getenv("DB_NAME",    "workload_balancing_ai")
+from pymongo.uri_parser import parse_uri
 
+_MONGO_URI = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI") or "mongodb://localhost:27017/"
+_MONGO_URI = _MONGO_URI.strip('"').strip("'")
+
+try:
+    parsed_uri = parse_uri(_MONGO_URI)
+    db_name_from_uri = parsed_uri.get("database")
+except Exception:
+    db_name_from_uri = None
+
+db_name = db_name_from_uri or os.getenv("DB_NAME") or "crm-hrms-DB"
+db_name = db_name.strip('"').strip("'")
+if db_name == "crm+hrm" or db_name == "workload_balancing_ai":
+    db_name = "crm-hrms-DB"
+
+_DB_NAME = db_name
 _mongo_client = None
 
 def _get_db():
@@ -29,7 +43,55 @@ def _get_db():
         )
     return _mongo_client[_DB_NAME]
 
-def _employees():          return _get_db()["employees"]
+def _employees():
+    db = _get_db()
+    if "users" in db.list_collection_names():
+        return db["users"]
+    return db["employees"]
+
+def get_all_employees_mapped():
+    db = _get_db()
+    coll = _employees()
+    raw_list = list(coll.find({}))
+    mapped_list = []
+    for e in raw_list:
+        eid = str(e.get("_id"))
+        if e.get("employee_id"):
+            eid = e.get("employee_id")
+        
+        # Skills mapping
+        skills = e.get("skills")
+        if not skills:
+            tech_stack = e.get("techStack")
+            if tech_stack:
+                ts_lower = tech_stack.lower()
+                if "mern" in ts_lower:
+                    skills = ["React", "Node.js", "Express", "MongoDB", "MERN", "JavaScript", "HTML", "CSS"]
+                elif "full stack" in ts_lower:
+                    skills = ["React", "Node.js", "Express", "MongoDB", "SQL", "JavaScript", "HTML", "CSS", "Full Stack"]
+                elif "aiml" in ts_lower:
+                    skills = ["Python", "ML", "AI", "TensorFlow", "PyTorch", "AIML", "Data Science", "Machine Learning"]
+                elif "frontend" in ts_lower:
+                    skills = ["React", "HTML", "CSS", "JavaScript", "Frontend", "TypeScript"]
+                elif "backend" in ts_lower:
+                    skills = ["Node.js", "Express", "Python", "MongoDB", "SQL", "Backend", "REST API", "Java"]
+                else:
+                    skills = [tech_stack]
+            else:
+                skills = []
+        
+        skills = [str(s) for s in skills]
+        
+        mapped_list.append({
+            "employee_id": eid,
+            "name": e.get("name", "Unknown"),
+            "team": e.get("team") or e.get("department") or "Engineering",
+            "capacity_hours_per_week": e.get("capacity_hours_per_week") or e.get("capacity") or 40,
+            "availability_status": e.get("availability_status") or ("available" if e.get("isActive", True) else "unavailable"),
+            "skills": skills
+        })
+    return mapped_list
+
 def _tasks():              return _get_db()["tasks"]
 def _timesheets():         return _get_db()["timesheets"]
 def _projects():           return _get_db()["projects"]
@@ -172,11 +234,7 @@ def get_team_workload():
     for t in active_tasks:
         tasks_by_emp.setdefault(t["assigned_to"], []).append(t)
 
-    employees = list(_employees().find(
-        {},
-        {"_id": 0, "employee_id": 1, "name": 1, "team": 1,
-         "capacity_hours_per_week": 1, "availability_status": 1, "skills": 1}
-    ))
+    employees = get_all_employees_mapped()
 
     result = []
     for emp in employees:
@@ -251,7 +309,7 @@ def get_overtime_data():
     seven_days_ago = _utcnow() - timedelta(days=7)
     all_emp_ids = [
         e["employee_id"]
-        for e in _employees().find({}, {"_id": 0, "employee_id": 1})
+        for e in get_all_employees_mapped()
     ]
     report = []
     for eid in all_emp_ids:

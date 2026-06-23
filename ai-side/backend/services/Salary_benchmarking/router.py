@@ -28,12 +28,60 @@ class SalaryBenchmarkRequest(BaseModel):
 # Helper to resolve MongoDB connection dynamically
 def _get_db():
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-    db = client[DB_NAME]
-    if "employees" not in db.list_collection_names() and "hr_ai_system" in client.list_database_names():
-        return client["hr_ai_system"]
-    if "employees" not in db.list_collection_names() and "workload_balancing_ai" in client.list_database_names():
-        return client["workload_balancing_ai"]
+    db_name = DB_NAME
+    if db_name == "crm+hrm":
+        db_name = "crm-hrms-DB"
+    db = client[db_name]
     return db
+
+def _get_employees_coll(db):
+    if "users" in db.list_collection_names():
+        return db["users"]
+    return db["employees"]
+
+def _get_salary_record(db, employee_id):
+    from bson import ObjectId
+    try:
+        emp_obj = ObjectId(employee_id)
+    except:
+        emp_obj = None
+
+    if "salarystructures" in db.list_collection_names():
+        query = {"employee": emp_obj} if emp_obj else {"employee": employee_id}
+        rec = db["salarystructures"].find_one(query)
+        if not rec and emp_obj:
+            rec = db["salarystructures"].find_one({"employee": employee_id})
+        if rec:
+            basic = rec.get("basicSalary", 0)
+            hra = rec.get("hra", 0)
+            bonus = rec.get("bonus", 0)
+            pf = rec.get("pf", 0)
+            return {"ctc": rec.get("totalSalary", basic + hra + bonus - pf) * 12}
+            
+    if "salary" in db.list_collection_names():
+        rec = db["salary"].find_one({"employee_id": employee_id})
+        if not rec and emp_obj:
+            rec = db["salary"].find_one({"employee_id": emp_obj})
+        if rec:
+            return rec
+    return None
+
+def _get_all_salaries(db):
+    salaries = {}
+    if "salarystructures" in db.list_collection_names():
+        for rec in db["salarystructures"].find({}):
+            emp_id = str(rec.get("employee"))
+            basic = rec.get("basicSalary", 0)
+            hra = rec.get("hra", 0)
+            bonus = rec.get("bonus", 0)
+            pf = rec.get("pf", 0)
+            ctc = rec.get("totalSalary", basic + hra + bonus - pf) * 12
+            salaries[emp_id] = {"ctc": ctc}
+    if "salary" in db.list_collection_names():
+        for rec in db["salary"].find({}):
+            emp_id = str(rec.get("employee_id"))
+            salaries[emp_id] = rec
+    return salaries
 
 def _get_llm():
     try:
@@ -140,21 +188,25 @@ async def benchmark_salary(payload: SalaryBenchmarkRequest):
         # Scenario A: Single Employee Detailed Assessment
         if payload.employee_id:
             # 1. Fetch employee details
-            # Supports both string and ObjectId lookups
-            emp = db["employees"].find_one({"employee_id": payload.employee_id})
+            coll = _get_employees_coll(db)
+            from bson import ObjectId
+            emp = coll.find_one({"employee_id": payload.employee_id})
             if not emp:
-                emp = db["employees"].find_one({"_id": payload.employee_id})
+                try:
+                    emp = coll.find_one({"_id": ObjectId(payload.employee_id)})
+                except:
+                    emp = coll.find_one({"_id": payload.employee_id})
             if not emp:
                 raise HTTPException(status_code=404, detail=f"Employee {payload.employee_id} not found.")
                 
             # Extract basic details with fallback overrides
             role = payload.role or emp.get("role") or emp.get("designation") or "Software Engineer"
-            experience = payload.experience_years if payload.experience_years is not None else float(emp.get("experience_years", 3))
+            experience = payload.experience_years if payload.experience_years is not None else float(emp.get("experience_years") or emp.get("experienceYears") or 3)
             
             # Retrieve current CTC (check salary collection or fallback to employee schema CTC)
             current_salary = payload.current_salary
             if current_salary is None:
-                salary_record = db["salary"].find_one({"employee_id": payload.employee_id})
+                salary_record = _get_salary_record(db, payload.employee_id)
                 if salary_record:
                     current_salary = float(salary_record.get("ctc", 0))
                 else:
@@ -173,26 +225,18 @@ async def benchmark_salary(payload: SalaryBenchmarkRequest):
                 status = "Competitive (Market Rate)"
                 
             # 3. Calculate internal equity benchmarks
-            pipeline_peers = [
-                {"$match": {
-                    "$or": [
-                        {"role": role}, 
-                        {"designation": role},
-                        {"team": emp.get("team")}
-                    ]
-                }}
-            ]
-            peers = list(db["employees"].find({"$or": [{"role": role}, {"designation": role}]}))
-            peer_ids = [p.get("employee_id") or p.get("_id") for p in peers]
+            peers = list(coll.find({"$or": [{"role": role}, {"designation": role}]}))
+            peer_ids = [p.get("employee_id") or str(p.get("_id")) for p in peers]
             
             peer_salaries = []
-            salary_cursor = db["salary"].find({"employee_id": {"$in": peer_ids}})
-            for s_rec in salary_cursor:
-                peer_salaries.append(float(s_rec.get("ctc", 0)))
+            all_salaries = _get_all_salaries(db)
+            for pid in peer_ids:
+                s_rec = all_salaries.get(pid)
+                if s_rec:
+                    peer_salaries.append(float(s_rec.get("ctc", 0)))
                 
             if not peer_salaries:
-                # Fallback to local scans in employees collections
-                peer_salaries = [float(p.get("salary") or p.get("ctc")) for p in peers if p.get("salary") or p.get("ctc")]
+                peer_salaries = [float(p.get("salary") or p.get("ctc") or 500000.0) for p in peers]
                 
             if not peer_salaries:
                 peer_salaries = [current_salary]
@@ -336,13 +380,23 @@ Recommended Correction:
             
         # Scenario B: Organization-Wide Benchmarking Audit
         else:
-            employees = list(db["employees"].find({}, {"employee_id": 1, "name": 1, "team": 1, "role": 1, "designation": 1, "experience_years": 1}))
+            coll = _get_employees_coll(db)
+            raw_employees = list(coll.find({}))
+            employees = []
+            for r in raw_employees:
+                eid = r.get("employee_id") or str(r["_id"])
+                employees.append({
+                    "employee_id": eid,
+                    "name": r.get("name", "Unknown"),
+                    "team": r.get("team") or r.get("department") or "N/A",
+                    "role": r.get("role") or r.get("designation") or "Software Engineer",
+                    "experience_years": float(r.get("experience_years") or r.get("experienceYears") or 3)
+                })
             if not employees:
                 return {"success": True, "scan_timestamp": datetime.utcnow().isoformat(), "audit_records": []}
                 
             # Fetch all salary records to match in memory
-            salary_cursor = db["salary"].find({})
-            salaries_by_emp = {s["employee_id"]: s for s in salary_cursor}
+            salaries_by_emp = _get_all_salaries(db)
             
             audit_records = []
             underpaid_count = 0
@@ -350,13 +404,13 @@ Recommended Correction:
             overpaid_count = 0
             
             for emp in employees:
-                eid = emp.get("employee_id") or emp.get("_id")
-                role = emp.get("role") or emp.get("designation") or "Software Engineer"
-                experience = float(emp.get("experience_years", 3))
+                eid = emp["employee_id"]
+                role = emp["role"]
+                experience = emp["experience_years"]
                 
                 # Fetch CTC
                 salary_rec = salaries_by_emp.get(eid, {})
-                current_salary = float(salary_rec.get("ctc") or emp.get("salary") or emp.get("ctc") or 500000.0)
+                current_salary = float(salary_rec.get("ctc") or 500000.0)
                 
                 # Market rate comparison
                 market_min, market_max, market_avg = get_market_rates(role, experience)

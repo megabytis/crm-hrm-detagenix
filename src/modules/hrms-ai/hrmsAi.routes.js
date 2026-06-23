@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../../config/multer");
-const { screenResume, evaluateInterview, chatWithHrBot, predictPerformance, predictAttrition, predictAttritionBatch } = require("./hrmsAi.controller");
+const { screenResume, evaluateInterview, chatWithHrBot, predictPerformance, predictAttrition, predictAttritionBatch, recommendTeam, balanceWorkload, detectBurnout, benchmarkSalary } = require("./hrmsAi.controller");
 const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
 
 // Expose the Smart Resume Screening & Matching API route.
@@ -62,6 +62,42 @@ router.post(
   protect,
   authorizeRoles("ADMIN", "HR"),
   predictAttritionBatch
+);
+
+// Expose the Intelligent Team Formation route.
+// Restricted to ADMIN and HR roles.
+router.post(
+  "/team/recommend",
+  protect,
+  authorizeRoles("ADMIN", "HR"),
+  recommendTeam
+);
+
+// Expose the Workload Balancing Engine route.
+// Restricted to ADMIN and HR roles.
+router.post(
+  "/workload/balance",
+  protect,
+  authorizeRoles("ADMIN", "HR"),
+  balanceWorkload
+);
+
+// Expose the Burnout & Engagement Detection route.
+// Restricted to ADMIN and HR roles.
+router.post(
+  "/burnout/detect",
+  protect,
+  authorizeRoles("ADMIN", "HR"),
+  detectBurnout
+);
+
+// Expose the AI Salary Benchmarking route.
+// Restricted to ADMIN and HR roles.
+router.post(
+  "/salary/benchmark",
+  protect,
+  authorizeRoles("ADMIN", "HR"),
+  benchmarkSalary
 );
 
 module.exports = router;
