@@ -1,13 +1,16 @@
 import React from "react";
 import { FaCheckCircle } from "react-icons/fa";
-
 export default function RiskAnomalyCard() {
+  // Commented out dummy risks (CTO compliance)
+  /*
   const risks = [
     { text: "User Login Spike Detected", level: "High", checked: true },
     { text: "Multiple Failed Attempts", level: "Medium", checked: true },
     { text: "Unusual Data Export", level: "High", checked: true },
     { text: "Location Mismatch Access", level: "Low", checked: true },
   ];
+  */
+  const risks = [];
 
   const getRiskColor = (level) => {
     switch (level) {
@@ -114,43 +117,49 @@ export default function RiskAnomalyCard() {
       </div>
       
       <div style={styles.riskList}>
-        {risks.map((risk, index) => (
-          <div
-            key={index}
-            style={styles.riskItem}
-            onMouseEnter={(e) => {
-              Object.assign(e.target.style, styles.riskItemHover);
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#f8fafc';
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = 'none';
-            }}
-          >
-            <div style={styles.riskContent}>
-              {risk.checked && (
-                <FaCheckCircle 
-                  style={{
-                    fontSize: '16px',
-                    color: getRiskColor(risk.level),
-                    flexShrink: 0
-                  }} 
-                />
-              )}
-              <p style={styles.riskText}>{risk.text}</p>
-            </div>
-            
-            <span
-              style={{
-                ...styles.riskBadge,
-                color: getRiskColor(risk.level),
-                backgroundColor: getRiskBgColor(risk.level)
+        {risks.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>
+            No active AI risks or anomaly logs found in the database.
+          </div>
+        ) : (
+          risks.map((risk, index) => (
+            <div
+              key={index}
+              style={styles.riskItem}
+              onMouseEnter={(e) => {
+                Object.assign(e.target.style, styles.riskItemHover);
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#f8fafc';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
               }}
             >
-              {risk.level}
-            </span>
-          </div>
-        ))}
+              <div style={styles.riskContent}>
+                {risk.checked && (
+                  <FaCheckCircle 
+                    style={{
+                      fontSize: '16px',
+                      color: getRiskColor(risk.level),
+                      flexShrink: 0
+                    }} 
+                  />
+                )}
+                <p style={styles.riskText}>{risk.text}</p>
+              </div>
+              
+              <span
+                style={{
+                  ...styles.riskBadge,
+                  color: getRiskColor(risk.level),
+                  backgroundColor: getRiskBgColor(risk.level)
+                }}
+              >
+                {risk.level}
+              </span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

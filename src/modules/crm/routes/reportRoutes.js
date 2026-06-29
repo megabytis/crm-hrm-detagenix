@@ -12,13 +12,13 @@ const { authorizeRoles } = require("../../../middleware/role.middleware");
 router.get(
   "/dashboard",
   protect,
-  authorizeRoles("ADMIN", "MANAGER", "BD"),
+  authorizeRoles("ADMIN", "MANAGER", "BDE"),
   dashboardStats,
 );
 router.get(
   "/sales-forecast",
   protect,
-  authorizeRoles("ADMIN", "MANAGER", "BD"),
+  authorizeRoles("ADMIN", "MANAGER", "BDE"),
   getSalesForecast,
 );
 

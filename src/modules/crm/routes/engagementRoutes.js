@@ -7,8 +7,8 @@ const { authorizeRoles } = require("../../../middleware/role.middleware");
 const upload = require("../../../config/multer"); // Added to support document file uploads
 
 // Restrict routes to authenticated users with appropriate roles
-router.post( "/clv/predict", protect, authorizeRoles("ADMIN", "MANAGER", "BD"), predictClientLTV );
-router.post( "/followup/optimize", protect, authorizeRoles("ADMIN", "MANAGER", "BD"), optimizeFollowupStrategy );
+router.post( "/clv/predict", protect, authorizeRoles("ADMIN", "MANAGER", "BDE"), predictClientLTV );
+router.post( "/followup/optimize", protect, authorizeRoles("ADMIN", "MANAGER", "BDE"), optimizeFollowupStrategy );
 
 /*
  * Added by Pairing AI: Lead Conversion Engine Routes
@@ -18,12 +18,12 @@ router.post( "/followup/optimize", protect, authorizeRoles("ADMIN", "MANAGER", "
 // LEGACY JSON-BASED PREDICT ROUTE
 // Kept for reference. Do not delete.
 // ------------------------------------------------------------------------------
-// router.post( "/conversion/predict", protect, authorizeRoles("ADMIN", "MANAGER", "BD"), predictLeadConversion );
+// router.post( "/conversion/predict", protect, authorizeRoles("ADMIN", "MANAGER", "BDE"), predictLeadConversion );
 // ==============================================================================
 
 // UPDATED MULTIPART FORM-DATA PREDICT ROUTE (CTO SPEC)
-router.post( "/conversion/predict", protect, authorizeRoles("ADMIN", "MANAGER", "BD"), upload.single("document"), predictLeadConversion );
+router.post( "/conversion/predict", protect, authorizeRoles("ADMIN", "MANAGER", "BDE"), upload.single("document"), predictLeadConversion );
 
-router.post( "/conversion/train", protect, authorizeRoles("ADMIN", "MANAGER", "BD"), trainConversionModel );
+router.post( "/conversion/train", protect, authorizeRoles("ADMIN", "MANAGER", "BDE"), trainConversionModel );
 
 module.exports = router;

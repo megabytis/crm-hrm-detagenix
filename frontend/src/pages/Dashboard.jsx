@@ -15,19 +15,27 @@ import { crmService } from "../services/crmService";
 import { userService } from "../services/userService";
 
 export default function Dashboard() {
-  const [totalLeads, setTotalLeads] = useState(8420);
+  // Commented out dummy count fallbacks (CTO compliance)
+  // const [totalLeads, setTotalLeads] = useState(8420);
+  const [totalLeads, setTotalLeads] = useState(0);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadsError, setLeadsError] = useState(null);
   
-  const [totalCustomers, setTotalCustomers] = useState(3265);
+  // Commented out dummy count fallbacks (CTO compliance)
+  // const [totalCustomers, setTotalCustomers] = useState(3265);
+  const [totalCustomers, setTotalCustomers] = useState(0);
   const [customersLoading, setCustomersLoading] = useState(false);
   const [customersError, setCustomersError] = useState(null);
 
-  const [totalEmployees, setTotalEmployees] = useState(182);
+  // Commented out dummy count fallbacks (CTO compliance)
+  // const [totalEmployees, setTotalEmployees] = useState(182);
+  const [totalEmployees, setTotalEmployees] = useState(0);
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeesError, setEmployeesError] = useState(null);
 
-  const [totalUsers, setTotalUsers] = useState(1024);
+  // Commented out dummy count fallbacks (CTO compliance)
+  // const [totalUsers, setTotalUsers] = useState(1024);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState(null);
 

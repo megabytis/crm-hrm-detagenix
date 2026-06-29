@@ -457,6 +457,53 @@
 ### `ai-side/backend/services/AI_HR_Chatbot/tools.py`
 1. **Tool Signature Argument Removal**: Removed the `employee_id` parameter from `leave_balance_tool`, `salary_tool`, and `employee_info_tool` to prevent the LLM from passing `"current_employee"` which resulted in "record not found" errors. Instead, the tools now securely resolve the scoped `employee_id` from the outer lexical closure where the agent was instantiated.
 
+---
+
+### `frontend/src/pages/Dashboard.jsx`
+1. **Dashboard Count Initialization**: Initialized counts (`totalLeads`, `totalCustomers`, `totalEmployees`, `totalUsers`) in React state to `0` instead of dummy counts `8420`, `3265`, `182`, `1024` to avoid rendering static fallback data.
+
+---
+
+### `frontend/src/components/DashboardComponents/RiskAnomalyCard.jsx`
+1. **Comment Out Mock Risks**: Commented out the hardcoded mock risks list and initialized `risks` to `[]`. Added a clean empty state display when no database logs are retrieved.
+
+---
+
+### `frontend/src/components/DashboardComponents/SecurityAlerts.jsx`
+1. **Comment Out Mock Alerts**: Commented out hardcoded mock security alerts and initialized `alerts` to `[]`. Rendered a placeholder row in the table when database records are empty.
+
+---
+
+### `frontend/src/components/DashboardComponents/MonthlyRevenueChart.jsx`
+1. **Comment Out Mock Revenue Chart Data**: Commented out the static monthly revenue values and labels. Exposed an inline placeholder message indicating empty revenue data.
+
+---
+
+### `frontend/src/components/DashboardComponents/EmployeeGrowthTrend.jsx`
+1. **Comment Out Mock Growth Chart Data**: Commented out hardcoded recruitment stages dataset. Rendered an inline dashed placeholder message inside the chart container when the database is empty.
+
+---
+
+### `frontend/src/components/SalesDashboard/SalesDashboard.jsx`
+1. **Sales Dashboard Real Database Integration**: Fully refactored the Sales Dashboard to fetch real leads, temperatures (Hot / Warm / Cold), deals, and activities directly from the database using CRM client services. Commented out all hardcoded mock lists.
+
+---
+
+### `frontend/src/services/crmService.js`
+1. **Deals Service Module**: Exposed the `deals` API helper object to fetch CRM deals lists from the backend router (`/crm/deals`).
+
+---
+
+### `src/modules/auth/models/User.js`
+1. **Swagger Role Normalisation**: Replaced swagger annotation mentions of `BD_MANAGER` with `BDE` (lines 12 and 36) to avoid database and route authorization checks mismatch.
+
+---
+
+### `src/modules/crm/controllers/leadController.js`
+1. **Lead Priority & ML Temperature Synchronisation**: Updated `createLead` and `updateLead` handlers to dynamically update the main `priority` attribute of the lead document with the predicted temperature class (`Hot`, `Warm`, `Cold`) returned by the ML scorer. This ensures database-level parity and correct real-time rendering in the Leads Management lists and metrics dashboards.
+
+
+
 
 
 

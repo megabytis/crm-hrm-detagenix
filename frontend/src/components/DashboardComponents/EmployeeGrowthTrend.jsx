@@ -14,6 +14,8 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const EmployeeGrowthTrend = () => {
   
+  // Commented out dummy growth data (CTO compliance)
+  /*
   const employeeGrowthData = {
     current: 182,
     previous: 173,
@@ -26,6 +28,14 @@ const EmployeeGrowthTrend = () => {
       { label: "Selected", value: 45 },
       { label: "Onboarded", value: 182 },
     ]
+  };
+  */
+  const employeeGrowthData = {
+    current: 0,
+    previous: 0,
+    growth: 0,
+    growthPercentage: 0,
+    stages: []
   };
 
   const chartData = {
@@ -212,7 +222,13 @@ const EmployeeGrowthTrend = () => {
 
         {/* Funnel Chart */}
         <div style={styles.chartContainer}>
-          <Bar data={chartData} options={options} />
+          {employeeGrowthData.stages.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>
+              No employee recruitment data found in the database.
+            </div>
+          ) : (
+            <Bar data={chartData} options={options} />
+          )}
         </div>
       </div>
     );

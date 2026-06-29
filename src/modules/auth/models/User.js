@@ -9,7 +9,7 @@ const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
  * @swagger
  * /users:
  *   post:
- *     summary: Create user (HR → Employee / BD Manager)
+ *     summary: Create user (HR → Employee / BDE)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -33,7 +33,7 @@ const { protect, authorizeRoles } = require("../../middleware/auth.middleware");
  *                 type: string
  *               role:
  *                 type: string
- *                 enum: [EMPLOYEE, BD_MANAGER, MANAGER]
+ *                 enum: [EMPLOYEE, BDE, MANAGER]
  *     responses: 
  *       201:
  *         description : User created successfully

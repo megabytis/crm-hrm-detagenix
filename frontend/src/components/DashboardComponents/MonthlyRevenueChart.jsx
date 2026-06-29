@@ -20,8 +20,9 @@ ChartJS.register(
   Tooltip,
   Legend
 );
-
 export default function MonthlyRevenueChart() {
+  // Commented out dummy revenue data (CTO compliance)
+  /*
   const data = [9500, 10200, 10000, 10800, 11200, 12540, 12100, 13000, 14800];
 
   const labels = [
@@ -35,6 +36,9 @@ export default function MonthlyRevenueChart() {
     "Sep 29",
     "Oct 3"
   ];
+  */
+  const data = [];
+  const labels = [];
 
   const chartData = {
     labels,
@@ -94,7 +98,13 @@ export default function MonthlyRevenueChart() {
       </div>
 
       <div style={{ height: "300px", marginTop: "20px" }}>
-        <Line data={chartData} options={options} />
+        {data.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>
+            No monthly revenue records found in the database.
+          </div>
+        ) : (
+          <Line data={chartData} options={options} />
+        )}
       </div>
 
       <style>{`

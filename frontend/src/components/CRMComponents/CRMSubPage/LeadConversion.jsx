@@ -414,7 +414,7 @@ const LeadConversion = () => {
                 </div>
               </div>
 
-              {/* Sample buttons updated for high/low intent mapping */}
+              {/* Sample buttons updated for high/low intent mapping
               <div className="sample-buttons">
                 <button type="button" className="sample-btn" onClick={() => setPredictionData({
                   leadId: 'DTGNX-HIGH-SAMPLE',
@@ -435,6 +435,7 @@ const LeadConversion = () => {
                   mailResponseCount: 0
                 })}>Use low-intent sample</button>
               </div>
+              */}
 
               <button type="submit" className="predict-btn" disabled={loading}>
                 {loading ? 'Processing...' : 'Predict Conversion Probability'}

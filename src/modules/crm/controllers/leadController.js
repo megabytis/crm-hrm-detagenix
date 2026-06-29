@@ -110,6 +110,12 @@ exports.createLead = async (req, res) => {
       if (prediction && prediction.success && prediction.prediction) {
         lead.ml_prediction = prediction.prediction;
         if (prediction.unique_id) lead.ai_unique_id = prediction.unique_id;
+        
+        // Sync priority field with AI's predicted temperature (CTO request: keep real-time parity in DB)
+        if (prediction.prediction.predicted_temperature && prediction.prediction.predicted_temperature !== "Unknown") {
+          lead.priority = prediction.prediction.predicted_temperature;
+        }
+        
         await lead.save();
       }
     } catch (err) {
@@ -217,6 +223,12 @@ exports.updateLead = async (req, res) => {
         if (prediction && prediction.success && prediction.prediction) {
           lead.ml_prediction = prediction.prediction;
           if (prediction.unique_id) lead.ai_unique_id = prediction.unique_id;
+          
+          // Sync priority field with AI's predicted temperature (CTO request: keep real-time parity in DB)
+          if (prediction.prediction.predicted_temperature && prediction.prediction.predicted_temperature !== "Unknown") {
+            lead.priority = prediction.prediction.predicted_temperature;
+          }
+          
           await lead.save();
         }
       })

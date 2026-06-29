@@ -1,15 +1,16 @@
 import React from "react";
 import { FaUser, FaExclamationTriangle, FaShieldAlt, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-
 export default function SecurityAlerts() {
+  // Commented out dummy alerts (CTO compliance)
+  /*
   const alerts = [
     { user: "Arjun", activity: "Failed Login", risk: "Low", time: "2 mins ago", status: "Resolved" },
     { user: "Neha", activity: "Data Export", risk: "High", time: "5 mins ago", status: "Active"},
     { user: "Pooja", activity: "Role Change", risk: "Low", time: "12 mins ago", status: "Resolved"},
     { user: "Rahul", activity: "API Abuse", risk: "Medium", time: "18 mins ago", status: "Active"},
-
-    
   ];
+  */
+  const alerts = [];
 
   const getRiskColor = (level) => {
     switch (level) {
@@ -158,48 +159,55 @@ export default function SecurityAlerts() {
             </tr>
           </thead>
           <tbody>
-            {alerts.map((alert, index) => (
-              <tr key={index}>
-                <td style={styles.td}>
-                  <div style={styles.userCell}>
-                   
-                    <span style={styles.userName}>{alert.user}</span>
-                  </div>
-                </td>
-                <td style={styles.td}>{alert.activity}</td>
-                <td style={styles.td}>
-                  <span
-                    style={{
-                      ...styles.riskBadge,
-                      color: getRiskColor(alert.risk),
-                      backgroundColor: getRiskBgColor(alert.risk)
-                    }}
-                  >
-                    {alert.risk}
-                  </span>
-                </td>
-                <td style={{...styles.td, ...styles.timeCell}}>
-                  {alert.time}
-                </td>
-                <td style={styles.td}>
-                  <div style={styles.statusCell}>
-                    {alert.status === 'Active' ? (
-                      <FaTimesCircle style={{...styles.statusIcon, ...styles.statusActive}} />
-                    ) : (
-                      <FaCheckCircle style={{...styles.statusIcon, ...styles.statusResolved}} />
-                    )}
-                    <span 
-                      style={{
-                        ...styles.statusText,
-                        ...(alert.status === 'Active' ? styles.statusActive : styles.statusResolved)
-                      }}
-                    >
-                      {alert.status}
-                    </span>
-                  </div>
+            {alerts.length === 0 ? (
+              <tr>
+                <td colSpan="5" style={{...styles.td, textAlign: 'center', color: '#6b7280', padding: '24px'}}>
+                  No real-time security alerts found in the database.
                 </td>
               </tr>
-            ))}
+            ) : (
+              alerts.map((alert, index) => (
+                <tr key={index}>
+                  <td style={styles.td}>
+                    <div style={styles.userCell}>
+                      <span style={styles.userName}>{alert.user}</span>
+                    </div>
+                  </td>
+                  <td style={styles.td}>{alert.activity}</td>
+                  <td style={styles.td}>
+                    <span
+                      style={{
+                        ...styles.riskBadge,
+                        color: getRiskColor(alert.risk),
+                        backgroundColor: getRiskBgColor(alert.risk)
+                      }}
+                    >
+                      {alert.risk}
+                    </span>
+                  </td>
+                  <td style={{...styles.td, ...styles.timeCell}}>
+                    {alert.time}
+                  </td>
+                  <td style={styles.td}>
+                    <div style={styles.statusCell}>
+                      {alert.status === 'Active' ? (
+                        <FaTimesCircle style={{...styles.statusIcon, ...styles.statusActive}} />
+                      ) : (
+                        <FaCheckCircle style={{...styles.statusIcon, ...styles.statusResolved}} />
+                      )}
+                      <span 
+                        style={{
+                          ...styles.statusText,
+                          ...(alert.status === 'Active' ? styles.statusActive : styles.statusResolved)
+                        }}
+                      >
+                        {alert.status}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

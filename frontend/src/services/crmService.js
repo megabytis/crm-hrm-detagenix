@@ -224,6 +224,22 @@ export const crmService = {
         throw error;
       }
     }
+  },
+
+  /*
+   * Added by Pairing AI: Deals Service Module
+   * Retrieves real CRM deals records from the database.
+   */
+  deals: {
+    getAll: async (params = {}) => {
+      try {
+        const response = await api.get('/crm/deals', { params });
+        return response;
+      } catch (error) {
+        console.error('CRM Service - Get deals error:', error);
+        throw error;
+      }
+    }
   }
 };
 
